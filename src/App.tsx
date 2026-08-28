@@ -88,10 +88,12 @@ function App() {
   const [launchers, setLaunchers] = useState<Launcher[]>(() => { const saved = localStorage.getItem('myos-launchers'); return saved ? JSON.parse(saved) : [] })
   const [newLauncherName, setNewLauncherName] = useState(''); const [newLauncherUrl, setNewLauncherUrl] = useState('')
 
+  // 🍅 Pomodoro Timer 상태 (자유 시간 설정 및 집중/휴식 모드 복구)
+  const [studyMinutes, setStudyMinutes] = useState(50)
+  const [breakMinutes, setBreakMinutes] = useState(10)
   const [timeLeft, setTimeLeft] = useState(50 * 60)
   const [isTimerRunning, setIsTimerRunning] = useState(false)
   const [timerMode, setTimerMode] = useState<'study' | 'break'>('study')
-  const [customMinutes, setCustomMinutes] = useState(50)
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>
@@ -105,22 +107,15 @@ function App() {
       alert(timerMode === 'study' ? '집중 시간 종료! 휴식하세요 ☕' : '휴식 시간 종료! 다시 집중해봅시다 🔥')
       const nextMode = timerMode === 'study' ? 'break' : 'study'
       setTimerMode(nextMode)
-      setTimeLeft(nextMode === 'study' ? customMinutes * 60 : 10 * 60)
+      setTimeLeft(nextMode === 'study' ? studyMinutes * 60 : breakMinutes * 60)
     }
     return () => clearInterval(interval)
-  }, [isTimerRunning, timeLeft, timerMode, customMinutes])
+  }, [isTimerRunning, timeLeft, timerMode, studyMinutes, breakMinutes])
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0')
     const s = (seconds % 60).toString().padStart(2, '0')
     return `${m}:${s}`
-  }
-
-  const changeTimerDuration = (mins: number) => {
-    setIsTimerRunning(false)
-    setCustomMinutes(mins)
-    setTimerMode('study')
-    setTimeLeft(mins * 60)
   }
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -324,7 +319,11 @@ function App() {
 
         {page === 'home' && (
           <>
-            <section className="welcome"><h1>오늘을 관리하세요.</h1><p>시스템이 준비되었습니다.</p></section>
+            {/* 🌟 수정 요청: 홈 화면 문구 복구 */}
+            <section className="welcome">
+              <h1>오늘을 관리하세요.</h1>
+              <p>필요한 것을 간단하게 시작해보세요.</p>
+            </section>
             
             <div className="briefing-widget" onClick={sendBriefing}>
               <div className="briefing-header"><span className="briefing-title">오늘의 브리핑</span><button className="briefing-btn">알림 받기</button></div>
@@ -356,20 +355,44 @@ function App() {
           </>
         )}
 
+        {/* 🍅 업그레이드된 Pomodoro Timer 페이지 */}
         {page === 'timer' && (
           <section className="timer-page">
             <div className="page-title"><span>Myos</span><h1>Pomodoro Timer</h1><p>자유로운 집중 & 휴식 루틴 관리.</p></div>
             <div className="timer-container">
-              <div className="timer-status-badge">{timerMode === 'study' ? '집중 세션' : '휴식 세션'}</div>
-              <div className="timer-display">{formatTime(timeLeft)}</div>
-              <div className="timer-presets">
-                <button className={customMinutes === 25 ? 'active-preset' : ''} onClick={() => changeTimerDuration(25)}>25분 집중</button>
-                <button className={customMinutes === 50 ? 'active-preset' : ''} onClick={() => changeTimerDuration(50)}>50분 집중</button>
-                <button className={customMinutes === 60 ? 'active-preset' : ''} onClick={() => changeTimerDuration(60)}>60분 집중</button>
+              
+              {/* 🌟 수정 요청: 집중/휴식 탭 완벽 복구 */}
+              <div className="timer-mode-selector">
+                <button className={timerMode === 'study' ? 'active' : ''} onClick={() => { setTimerMode('study'); setTimeLeft(studyMinutes * 60); setIsTimerRunning(false) }}>집중 모드</button>
+                <button className={timerMode === 'break' ? 'active' : ''} onClick={() => { setTimerMode('break'); setTimeLeft(breakMinutes * 60); setIsTimerRunning(false) }}>휴식 모드</button>
               </div>
+              
+              <div className="timer-display">{formatTime(timeLeft)}</div>
+
+              {/* 🌟 수정 요청: 고정 버튼 삭제하고 스크롤/직접 입력 가능한 시간 조절기 추가 */}
+              {!isTimerRunning && (
+                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginBottom: '32px' }}>
+                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
+                    {timerMode === 'study' ? '집중' : '휴식'} 시간(분):
+                  </span>
+                  <input 
+                    type="number" 
+                    min="1" max="180"
+                    value={timerMode === 'study' ? studyMinutes : breakMinutes}
+                    onChange={(e) => {
+                      const val = parseInt(e.target.value) || 1;
+                      if (timerMode === 'study') { setStudyMinutes(val); setTimeLeft(val * 60); }
+                      else { setBreakMinutes(val); setTimeLeft(val * 60); }
+                    }}
+                    style={{ width: '80px', textAlign: 'center', padding: '8px', minHeight: '40px', fontSize: '1rem' }}
+                  />
+                </div>
+              )}
+              {isTimerRunning && <div style={{ height: '74px' }}></div> /* 타이머 작동 중 높이 유지용 빈 공간 */}
+
               <div className="timer-controls">
                 <button className="primary-btn" onClick={() => setIsTimerRunning(!isTimerRunning)}>{isTimerRunning ? '일시정지' : '시작'}</button>
-                <button className="secondary-btn" onClick={() => { setIsTimerRunning(false); setTimeLeft(timerMode === 'study' ? customMinutes * 60 : 10 * 60) }}>초기화</button>
+                <button className="secondary-btn" onClick={() => { setIsTimerRunning(false); setTimeLeft(timerMode === 'study' ? studyMinutes * 60 : breakMinutes * 60) }}>초기화</button>
               </div>
             </div>
           </section>

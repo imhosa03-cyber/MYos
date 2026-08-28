@@ -3,12 +3,9 @@
 * { box-sizing: border-box; }
 button, input, select, textarea { font: inherit; }
 
-/* 🌟 1. 오로라 배경 및 Deep Indigo 컬러 설정 */
 .app {
   --text-primary: #1d1d1f;
   --text-secondary: #515154;
-  
-  /* 🌟 신규 컬러: 트렌디하고 세련된 Deep Indigo (퍼플 네이비) */
   --primary-color: #5e5ce6;
   --primary-hover: #4c4ab3;
   
@@ -78,13 +75,30 @@ button, input, select, textarea { font: inherit; }
 @keyframes splashSlideUp { from { transform: translateY(40px) scale(0.95); opacity: 0; } to { transform: translateY(0) scale(1); opacity: 1; } }
 
 .home { min-height: 100vh; position: relative; }
-header { height: 80px; width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; }
+
+/* 🌟 상단 고정(Fixed) 글래스모피즘 헤더 */
+header {
+  position: fixed;
+  top: 0;
+  left: 0;
+  height: 80px;
+  width: 100%;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  padding: 0 40px;
+  z-index: 12;
+  background: var(--glass-bg);
+  backdrop-filter: blur(30px) saturate(180%);
+  -webkit-backdrop-filter: blur(30px) saturate(180%);
+  border-bottom: 1px solid var(--glass-border);
+}
 .logo { position: absolute; left: 50%; transform: translateX(-50%); font-size: 20px; font-weight: 700; letter-spacing: -0.5px; color: var(--text-primary); }
 .menu-button, .profile-button { width: 44px; height: 44px; border: none; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); color: var(--text-primary); font-size: 18px; cursor: pointer; border-radius: 50%; border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); transition: all 0.2s ease; }
 .app.dark .menu-button, .app.dark .profile-button { background: rgba(0,0,0,0.2); }
 .menu-button:hover, .profile-button:hover { transform: scale(1.05); background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
 
-.welcome { min-height: calc(100vh - 300px); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 0 20px 40px; max-width: 650px; margin: 0 auto; }
+.welcome { min-height: calc(100vh - 300px); display: flex; flex-direction: column; justify-content: center; align-items: center; text-align: center; padding: 40px 20px 40px; max-width: 650px; margin: 0 auto; }
 .welcome h1 { margin: 0; font-size: clamp(42px, 5vw, 64px); font-weight: 700; letter-spacing: -2px; color: var(--text-primary); line-height: 1.1; }
 .welcome p { margin: 16px 0 36px; color: var(--text-secondary); font-size: 16px; font-weight: 500; }
 
@@ -115,7 +129,6 @@ header { height: 80px; width: 100%; display: flex; align-items: center; justify-
 
 .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); font-size: 15px; font-weight: 500; border-radius: var(--card-radius); margin-top: 10px; }
 
-/* 🌟 사이드 메뉴 아이콘 정렬 */
 .side-menu { position: fixed; z-index: 20; top: 0; left: 0; width: 300px; height: 100vh; padding: 32px 24px; background: var(--glass-bg); backdrop-filter: blur(50px) saturate(200%); -webkit-backdrop-filter: blur(50px) saturate(200%); border-right: 1px solid var(--glass-border-light); box-shadow: 30px 0 60px rgba(0, 0, 0, 0.15); transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; }
 .side-menu.open { transform: translateX(0); }
 .menu-header { display: flex; align-items: center; justify-content: space-between; padding: 0 8px 32px; font-size: 22px; font-weight: 700; color: var(--text-primary); letter-spacing: -0.5px; }
@@ -124,13 +137,11 @@ header { height: 80px; width: 100%; display: flex; align-items: center; justify-
 .app.dark .menu-header button { background: rgba(255,255,255,0.1); }
 .side-menu nav { display: flex; flex-direction: column; gap: 8px; }
 
-/* 사이드 메뉴의 버튼 (아이콘과 텍스트) 예쁘게 정렬 */
 .side-menu nav button, .settings { 
   display: flex; align-items: center; gap: 14px; width: 100%; height: 48px; border: none; border-radius: 14px; background: transparent; padding: 0 16px; color: var(--text-primary); font-size: 15px; font-weight: 600; cursor: pointer; transition: all 0.2s; 
 }
 .side-menu nav button:hover, .settings:hover { background: rgba(255, 255, 255, 0.5); transform: translateX(4px); }
 .app.dark .side-menu nav button:hover, .app.dark .settings:hover { background: rgba(255, 255, 255, 0.1); }
-/* 아이콘 색상 설정 */
 .side-menu nav button svg, .settings svg { opacity: 0.8; stroke: var(--primary-color); }
 .app.dark .side-menu nav button svg, .app.dark .settings svg { stroke: var(--text-primary); opacity: 0.9; }
 
@@ -153,7 +164,10 @@ input:checked + .slider:before { transform: translateX(22px); }
 .add-menu button:hover { background: rgba(255,255,255,0.5); }
 .app.dark .add-menu button:hover { background: rgba(255,255,255,0.1); }
 
-.todo-page, .today-page, .schedule-page, .memo-page, .expense-page, .backup-page, .calendar-page, .diary-page, .launcher-page, .timer-page, .settings-page { width: min(800px, calc(100% - 40px)); margin: 0 auto; padding: 60px 0 120px; }
+/* 🌟 고정 헤더에 맞춰 각 페이지 상단 패딩을 110px로 확장 */
+.todo-page, .today-page, .schedule-page, .memo-page, .expense-page, .backup-page, .calendar-page, .diary-page, .launcher-page, .timer-page, .settings-page { 
+  width: min(800px, calc(100% - 40px)); margin: 0 auto; padding: 110px 0 120px; 
+}
 .page-title { margin-bottom: 40px; }
 .page-title span, .today-header span { display: block; margin-bottom: 10px; color: var(--text-secondary); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
 .page-title h1, .today-header h1 { margin: 0; font-size: 40px; font-weight: 800; letter-spacing: -1.5px; color: var(--text-primary); }
@@ -234,7 +248,7 @@ input[type="time"]::-webkit-calendar-picker-indicator, input[type="date"]::-webk
 
 .expense-dashboard { display: flex; gap: 32px; align-items: flex-start; }
 .expense-main { flex: 1; min-width: 0; }
-.expense-sidebar { width: 260px; flex-shrink: 0; position: sticky; top: 20px; }
+.expense-sidebar { width: 260px; flex-shrink: 0; position: sticky; top: 100px; }
 .expense-summary-panel { padding: 28px; display: flex; flex-direction: column; gap: 20px; }
 .summary-box small { color: var(--text-secondary); font-size: 13px; font-weight: 600; display: block; margin-bottom: 6px; }
 .income-text { color: #34c759; font-size: 24px; font-weight: 800; letter-spacing: -1px; }
@@ -283,7 +297,7 @@ input[type="time"]::-webkit-calendar-picker-indicator, input[type="date"]::-webk
   header { padding: 0 20px; }
   .add-button { right: 20px; bottom: 20px; width: 56px; height: 56px; font-size: 24px; }
   .add-menu { right: 20px; bottom: 92px; }
-  .todo-page, .today-page, .schedule-page, .memo-page, .expense-page, .backup-page, .calendar-page, .diary-page, .launcher-page, .timer-page, .settings-page { width: calc(100% - 32px); padding-top: 30px; }
+  .todo-page, .today-page, .schedule-page, .memo-page, .expense-page, .backup-page, .calendar-page, .diary-page, .launcher-page, .timer-page, .settings-page { width: calc(100% - 32px); padding-top: 90px; }
   .calendar-cell { height: 90px; min-height: 90px; padding: 6px; }
   .badge { font-size: 10px; padding: 3px 5px; }
   .timer-display { font-size: 4.5rem; }

@@ -11,10 +11,9 @@ const getTodayDisplayKST = () => {
   return new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', weekday: 'long' }).format(now)
 }
 
-// 📱 햅틱(진동) 피드백 함수
 const triggerHaptic = () => {
   if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
-    window.navigator.vibrate(40); // 40ms의 기분 좋은 짧은 진동
+    window.navigator.vibrate(40);
   }
 }
 
@@ -299,7 +298,6 @@ function App() {
         </div>
       )}
 
-      {/* 🌟 수정 포인트: 사이드 메뉴에 모던한 SVG 아이콘 적용 */}
       <aside className={`side-menu ${showMenu ? 'open' : ''}`}>
         <div className="menu-header"><span>Myos</span><button onClick={() => setShowMenu(false)}>✕</button></div>
         <nav>
@@ -326,7 +324,12 @@ function App() {
       {showMenu && <div className="overlay" onClick={() => setShowMenu(false)} />}
 
       <main className="home">
-        <header><button className="menu-button" onClick={() => { triggerHaptic(); setShowMenu(true); }}>☰</button><div className="logo">Myos</div><button className="profile-button" onClick={triggerHaptic}>○</button></header>
+        {/* 상단 고정 헤더 */}
+        <header>
+          <button className="menu-button" onClick={() => { triggerHaptic(); setShowMenu(true); }}>☰</button>
+          <div className="logo" onClick={() => navigateTo('home')} style={{ cursor: 'pointer' }}>Myos</div>
+          <button className="profile-button" onClick={triggerHaptic}>○</button>
+        </header>
 
         {page === 'home' && (
           <>
@@ -421,7 +424,7 @@ function App() {
                 }}>등록</button>
               </div>
               {savedPin && (
-                <button className="secondary-btn" style={{ width: '100%', marginTop: '12px', color: '#ea4335' }} onClick={() => {
+                <button className="secondary-btn" style={{ width: '100%', marginTop: '12px', color: '#ff3b30' }} onClick={() => {
                   triggerHaptic(); localStorage.removeItem('myos-pin'); setSavedPin(''); setIsLocked(false); alert('비밀번호가 해제되었습니다.')
                 }}>비밀번호 잠금 해제 (삭제)</button>
               )}

@@ -27,6 +27,7 @@ type Todo = {
   id: number
   text: string
   date: string
+  time: string // 🕒 할 일 시간 추가
   priority: TodoPriority
   completed: boolean
 }
@@ -62,6 +63,14 @@ type Diary = {
   photo: string | null
 }
 
+// 🔄 구독료(고정 지출) 타입 추가
+type Subscription = {
+  id: number
+  name: string
+  amount: number
+  billingDay: number // 매월 결제일 (1~31)
+}
+
 const priorityOrder: Record<TodoPriority, number> = {
   high: 0,
   normal: 1,
@@ -79,7 +88,6 @@ const sortTodos = (items: Todo[]) => {
 }
 
 function App() {
-  // 📌 묵직하고 긴 호흡의 스플래시 대기 시간 (2.2초 유지 후 1초 동안 아주 천천히 페이드 아웃)
   const [isLoading, setIsLoading] = useState(true)
   const [isFading, setIsFading] = useState(false)
 
@@ -113,12 +121,16 @@ function App() {
     if (!saved) return []
     try {
       return JSON.parse(saved).map((todo: Todo) => ({
-        ...todo, date: todo.date ?? getTodayKST(), priority: todo.priority ?? 'normal',
+        ...todo, 
+        date: todo.date ?? getTodayKST(), 
+        priority: todo.priority ?? 'normal',
+        time: todo.time ?? '' // 이전 데이터 호환성
       }))
     } catch { return [] }
   })
   const [newTodo, setNewTodo] = useState('')
   const [newTodoDate, setNewTodoDate] = useState(getTodayKST())
+  const [newTodoTime, setNewTodoTime] = useState('') // 🕒 할 일 시간 상태
   const [newTodoPriority, setNewTodoPriority] = useState<TodoPriority>('normal')
   const [editingTodoId, setEditingTodoId] = useState<number | null>(null)
   const [todoSearch, setTodoSearch] = useState('')
@@ -154,6 +166,15 @@ function App() {
   
   const [expenseMonth, setExpenseMonth] = useState(getTodayKST().slice(0, 7))
 
+  // 🔄 구독료 상태 관리
+  const [subscriptions, setSubscriptions] = useState<Subscription[]>(() => {
+    const saved = localStorage.getItem('myos-subscriptions')
+    return saved ? JSON.parse(saved) : []
+  })
+  const [newSubName, setNewSubName] = useState('')
+  const [newSubAmount, setNewSubAmount] = useState('')
+  const [newSubDay, setNewSubDay] = useState('')
+
   const [diaries, setDiaries] = useState<Diary[]>(() => {
     const saved = localStorage.getItem('myos-diaries')
     return saved ? JSON.parse(saved) : []
@@ -173,6 +194,7 @@ function App() {
   useEffect(() => { localStorage.setItem('myos-memos', JSON.stringify(memos)) }, [memos])
   useEffect(() => { localStorage.setItem('myos-expenses', JSON.stringify(expenses)) }, [expenses])
   useEffect(() => { localStorage.setItem('myos-diaries', JSON.stringify(diaries)) }, [diaries])
+  useEffect(() => { localStorage.setItem('myos-subscriptions', JSON.stringify(subscriptions)) }, [subscriptions])
 
   const requestNotification = () => {
     if (!('Notification' in window)) {
@@ -181,9 +203,7 @@ function App() {
     }
     Notification.requestPermission().then((permission) => {
       if (permission === 'granted') {
-        new Notification('MYos 알림 설정 완료!', {
-          body: '중요한 일정과 할 일을 제때 알려드릴게요.',
-        })
+        new Notification('MYos 알림 설정 완료!', { body: '중요한 일정과 할 일을 제때 알려드릴게요.' })
       } else {
         alert('알림 권한이 거부되었습니다.')
       }
@@ -197,6 +217,7 @@ function App() {
       memos: localStorage.getItem('myos-memos'),
       expenses: localStorage.getItem('myos-expenses'),
       diaries: localStorage.getItem('myos-diaries'),
+      subscriptions: localStorage.getItem('myos-subscriptions'),
     }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob)
@@ -219,6 +240,7 @@ function App() {
         if (parsed.memos) localStorage.setItem('myos-memos', parsed.memos)
         if (parsed.expenses) localStorage.setItem('myos-expenses', parsed.expenses)
         if (parsed.diaries) localStorage.setItem('myos-diaries', parsed.diaries)
+        if (parsed.subscriptions) localStorage.setItem('myos-subscriptions', parsed.subscriptions)
         alert('데이터를 성공적으로 불러왔습니다! 앱을 새로고침합니다.')
         window.location.reload()
       } catch { alert('백업 파일 형식이 올바르지 않습니다.') }
@@ -229,19 +251,12 @@ function App() {
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]
     if (!file) return
-    if (file.size > 2 * 1024 * 1024) {
-      alert("이미지 크기가 너무 큽니다. (2MB 이하 권장)")
-      return
-    }
+    if (file.size > 2 * 1024 * 1024) { alert("이미지 크기가 너무 큽니다. (2MB 이하 권장)"); return }
     const reader = new FileReader()
     reader.onloadend = () => { setNewDiaryPhoto(reader.result as string) }
     reader.readAsDataURL(file)
   }
-
-  const removePhoto = () => {
-    setNewDiaryPhoto(null)
-    if (fileInputRef.current) fileInputRef.current.value = ''
-  }
+  const removePhoto = () => { setNewDiaryPhoto(null); if (fileInputRef.current) fileInputRef.current.value = '' }
 
   const addDiary = () => {
     const content = newDiaryContent.trim()
@@ -250,44 +265,27 @@ function App() {
     setDiaries((current) => [diary, ...current])
     setNewDiaryContent(''); removePhoto(); setNewDiaryDate(getTodayKST())
   }
-
-  const startEditDiary = (diary: Diary) => {
-    setEditingDiaryId(diary.id); setNewDiaryDate(diary.date); setNewDiaryContent(diary.content); setNewDiaryPhoto(diary.photo)
-  }
-
+  const startEditDiary = (diary: Diary) => { setEditingDiaryId(diary.id); setNewDiaryDate(diary.date); setNewDiaryContent(diary.content); setNewDiaryPhoto(diary.photo) }
   const updateDiary = () => {
     const content = newDiaryContent.trim()
     if (editingDiaryId === null || (!content && !newDiaryPhoto)) return
-    setDiaries((current) =>
-      current.map((diary) => diary.id === editingDiaryId ? { ...diary, date: newDiaryDate, content, photo: newDiaryPhoto } : diary)
-    )
+    setDiaries((current) => current.map((diary) => diary.id === editingDiaryId ? { ...diary, date: newDiaryDate, content, photo: newDiaryPhoto } : diary))
     setEditingDiaryId(null); setNewDiaryContent(''); removePhoto(); setNewDiaryDate(getTodayKST())
   }
+  const cancelEditDiary = () => { setEditingDiaryId(null); setNewDiaryContent(''); removePhoto(); setNewDiaryDate(getTodayKST()) }
+  const deleteDiary = (id: number) => { setDiaries((current) => current.filter((diary) => diary.id !== id)) }
 
-  const cancelEditDiary = () => {
-    setEditingDiaryId(null); setNewDiaryContent(''); removePhoto(); setNewDiaryDate(getTodayKST())
-  }
-
-  const deleteDiary = (id: number) => {
-    setDiaries((current) => current.filter((diary) => diary.id !== id))
-  }
-
-  const nextMonth = () => {
-    if (calMonth === 11) { setCalYear(calYear + 1); setCalMonth(0) } 
-    else { setCalMonth(calMonth + 1) }
-  }
-  const prevMonth = () => {
-    if (calMonth === 0) { setCalYear(calYear - 1); setCalMonth(11) } 
-    else { setCalMonth(calMonth - 1) }
-  }
+  const nextMonth = () => { if (calMonth === 11) { setCalYear(calYear + 1); setCalMonth(0) } else { setCalMonth(calMonth + 1) } }
+  const prevMonth = () => { if (calMonth === 0) { setCalYear(calYear - 1); setCalMonth(11) } else { setCalMonth(calMonth - 1) } }
 
   const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate()
   const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay()
 
-  const generateCalendarDays = () => {
+  // 🛠️ TypeScript 에러 해결: (number | null)[] 명시적 선언
+  const generateCalendarDays = (): (number | null)[] => {
     const totalDays = getDaysInMonth(calYear, calMonth)
     const firstDay = getFirstDayOfMonth(calYear, calMonth)
-    const days = []
+    const days: (number | null)[] = []
     for (let i = 0; i < firstDay; i++) days.push(null)
     for (let i = 1; i <= totalDays; i++) days.push(i)
     return days
@@ -302,17 +300,17 @@ function App() {
   const addTodo = () => {
     const text = newTodo.trim()
     if (!text || !newTodoDate) return
-    const todo: Todo = { id: Date.now(), text, date: newTodoDate, priority: newTodoPriority, completed: false }
-    setTodos((current) => [...current, todo]); setNewTodo(''); setNewTodoDate(getTodayKST()); setNewTodoPriority('normal')
+    const todo: Todo = { id: Date.now(), text, date: newTodoDate, time: newTodoTime, priority: newTodoPriority, completed: false }
+    setTodos((current) => [...current, todo]); setNewTodo(''); setNewTodoDate(getTodayKST()); setNewTodoTime(''); setNewTodoPriority('normal')
   }
-  const startEditTodo = (todo: Todo) => { setEditingTodoId(todo.id); setNewTodo(todo.text); setNewTodoDate(todo.date); setNewTodoPriority(todo.priority ?? 'normal') }
+  const startEditTodo = (todo: Todo) => { setEditingTodoId(todo.id); setNewTodo(todo.text); setNewTodoDate(todo.date); setNewTodoTime(todo.time ?? ''); setNewTodoPriority(todo.priority ?? 'normal') }
   const updateTodo = () => {
     const text = newTodo.trim()
     if (editingTodoId === null || !text || !newTodoDate) return
-    setTodos((current) => current.map((todo) => todo.id === editingTodoId ? { ...todo, text, date: newTodoDate, priority: newTodoPriority } : todo ))
-    setEditingTodoId(null); setNewTodo(''); setNewTodoDate(getTodayKST()); setNewTodoPriority('normal')
+    setTodos((current) => current.map((todo) => todo.id === editingTodoId ? { ...todo, text, date: newTodoDate, time: newTodoTime, priority: newTodoPriority } : todo ))
+    setEditingTodoId(null); setNewTodo(''); setNewTodoDate(getTodayKST()); setNewTodoTime(''); setNewTodoPriority('normal')
   }
-  const cancelEditTodo = () => { setEditingTodoId(null); setNewTodo(''); setNewTodoDate(getTodayKST()); setNewTodoPriority('normal') }
+  const cancelEditTodo = () => { setEditingTodoId(null); setNewTodo(''); setNewTodoDate(getTodayKST()); setNewTodoTime(''); setNewTodoPriority('normal') }
   const toggleTodo = (id: number) => { setTodos((current) => current.map((todo) => todo.id === id ? { ...todo, completed: !todo.completed } : todo )) }
   const deleteTodo = (id: number) => { setTodos((current) => current.filter((todo) => todo.id !== id)) }
 
@@ -365,6 +363,16 @@ function App() {
   }
   const deleteExpense = (id: number) => { setExpenses((current) => current.filter((expense) => expense.id !== id)) }
 
+  // 🔄 구독료 핸들러
+  const addSubscription = () => {
+    const amount = Number(newSubAmount.replace(/[^0-9]/g, ''))
+    const day = Number(newSubDay)
+    if (!newSubName.trim() || !amount || amount <= 0 || !day || day < 1 || day > 31) return
+    const sub: Subscription = { id: Date.now(), name: newSubName.trim(), amount, billingDay: day }
+    setSubscriptions(curr => [...curr, sub]); setNewSubName(''); setNewSubAmount(''); setNewSubDay('')
+  }
+  const deleteSubscription = (id: number) => { setSubscriptions(curr => curr.filter(s => s.id !== id)) }
+
   const shiftExpenseMonth = (direction: 'prev' | 'next') => {
     const [year, month] = expenseMonth.split('-').map(Number)
     const date = new Date(year, month - 1 + (direction === 'next' ? 1 : -1), 1)
@@ -373,10 +381,12 @@ function App() {
     setExpenseMonth(`${y}-${m}`)
   }
 
+  // 지출/결산 계산 (구독료 포함)
   const currentMonthExpenses = expenses.filter(e => e.date && e.date.startsWith(expenseMonth))
   const totalIncome = currentMonthExpenses.filter((e) => e.type === 'income').reduce((sum, e) => sum + e.amount, 0)
   const totalExpense = currentMonthExpenses.filter((e) => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0)
-  const balance = totalIncome - totalExpense
+  const totalSubAmount = subscriptions.reduce((sum, s) => sum + s.amount, 0)
+  const balance = totalIncome - totalExpense - totalSubAmount
 
   const getNearestSchedule = () => {
     const todayStr = getTodayKST()
@@ -388,15 +398,10 @@ function App() {
     return { ...nearest, dDayStr: diffDays === 0 ? 'D-Day' : `D-${diffDays}` }
   }
 
-  const navigateTo = (targetPage: typeof page) => {
-    setPage(targetPage)
-    setShowMenu(false)
-    setShowAdd(false)
-  }
+  const navigateTo = (targetPage: typeof page) => { setPage(targetPage); setShowMenu(false); setShowAdd(false) }
 
   return (
     <div className={`app ${isDarkMode ? 'dark' : ''}`}>
-      {/* 📌 아래에서 쓱 올라와서 아주 천천히 스르륵 녹아내리는 오프닝 스크린 */}
       {isLoading && (
         <div className={`splash-screen ${isFading ? 'fade-out' : ''}`}>
           <div className="splash-content">
@@ -406,7 +411,6 @@ function App() {
         </div>
       )}
 
-      {/* 왼쪽 메뉴 */}
       <aside className={`side-menu ${showMenu ? 'open' : ''}`}>
         <div className="menu-header">
           <span>Myos</span>
@@ -423,25 +427,16 @@ function App() {
           <button onClick={() => navigateTo('expense')}>지출</button>
           <button onClick={() => navigateTo('backup')}>데이터 관리</button>
         </nav>
-
         <div style={{ marginTop: '12px', padding: '0 4px' }}>
-          <button onClick={requestNotification} className="secondary-btn" style={{ width: '100%', fontSize: '13px' }}>
-            🔔 푸시 알림 켜기
-          </button>
+          <button onClick={requestNotification} className="secondary-btn" style={{ width: '100%', fontSize: '13px' }}>🔔 푸시 알림 켜기</button>
         </div>
-
         <div className="dark-mode-toggle-container">
           <span className="dark-mode-label">다크 모드</span>
           <label className="switch">
-            <input 
-              type="checkbox" 
-              checked={isDarkMode} 
-              onChange={() => setIsDarkMode(!isDarkMode)} 
-            />
+            <input type="checkbox" checked={isDarkMode} onChange={() => setIsDarkMode(!isDarkMode)} />
             <span className="slider"></span>
           </label>
         </div>
-
         <button className="settings">설정</button>
       </aside>
 
@@ -491,11 +486,25 @@ function App() {
         {page === 'calendar' && (
           <section className="calendar-page">
             <div className="page-title">
-              <span>Myos</span>
-              <h1>캘린더</h1>
-              <p>이번 달의 모든 기록을 확인하세요.</p>
+              <span>Myos</span><h1>캘린더</h1><p>이번 달의 모든 기록을 확인하세요.</p>
             </div>
             
+            {/* 📊 캘린더 월별 요약 (수입, 지출, 고정 지출) */}
+            <div className="calendar-summary-panel">
+              <div className="cal-sum-item">
+                <small>수입</small>
+                <div style={{ color: '#34a853' }}>+{expenses.filter(e => e.date.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`) && e.type === 'income').reduce((s, e) => s + e.amount, 0).toLocaleString()}원</div>
+              </div>
+              <div className="cal-sum-item">
+                <small>지출</small>
+                <div style={{ color: '#ea4335' }}>-{expenses.filter(e => e.date.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`) && e.type === 'expense').reduce((s, e) => s + e.amount, 0).toLocaleString()}원</div>
+              </div>
+              <div className="cal-sum-item">
+                <small>고정 지출</small>
+                <div style={{ color: 'var(--text-secondary)' }}>-{totalSubAmount.toLocaleString()}원</div>
+              </div>
+            </div>
+
             <div className="calendar-header">
               <button onClick={prevMonth}>◀</button>
               <h2>{calYear}년 {calMonth + 1}월</h2>
@@ -515,8 +524,10 @@ function App() {
                 const dayTodos = todos.filter(t => t.date === currentDate)
                 const dayDiaries = diaries.filter(d => d.date === currentDate)
                 const dayExpenses = expenses.filter(e => e.date === currentDate)
+                const daySubs = subscriptions.filter(s => s.billingDay === day) // 구독료 표시
+                
                 const dailyIncome = dayExpenses.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0)
-                const dailyOut = dayExpenses.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0)
+                const dailyOut = dayExpenses.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0) + daySubs.reduce((sum, s) => sum + s.amount, 0)
                 const dailyNet = dailyIncome - dailyOut
                 
                 const isToday = currentDate === getTodayKST()
@@ -525,8 +536,9 @@ function App() {
                   <div key={day} className={`calendar-cell ${isToday ? 'today' : ''}`}>
                     <span className="day-number">{day}</span>
                     <div className="cell-content">
-                      {daySchedules.map(s => <div key={s.id} className="badge schedule">{s.title}</div>)}
-                      {dayTodos.length > 0 && <div className="badge todo">할 일 {dayTodos.length}개</div>}
+                      {daySubs.map(s => <div key={s.id} className="badge sub">🔄 {s.name}</div>)}
+                      {daySchedules.map(s => <div key={s.id} className="badge schedule">{s.time} {s.title}</div>)}
+                      {dayTodos.map(t => <div key={t.id} className="badge todo">{t.time} {t.text}</div>)}
                       {dayExpenses.length > 0 && (
                         <div className={`badge ${dailyNet >= 0 ? 'income' : 'expense'}`}>
                           {dailyNet > 0 ? '+' : ''}{dailyNet.toLocaleString()}원
@@ -541,99 +553,14 @@ function App() {
           </section>
         )}
 
-        {/* 일기 */}
-        {page === 'diary' && (
-          <section className="diary-page">
-            <div className="page-title">
-              <span>Myos</span>
-              <h1>일기장</h1>
-              <p>오늘 하루의 생각과 사진을 남겨보세요.</p>
-            </div>
-
-            <div className="diary-input">
-              <input type="date" value={newDiaryDate} onChange={(e) => setNewDiaryDate(e.target.value)} />
-              <textarea
-                placeholder="오늘 하루는 어땠나요?"
-                value={newDiaryContent}
-                onChange={(e) => setNewDiaryContent(e.target.value)}
-                rows={5}
-              />
-              <div className="photo-upload-section">
-                <label className="photo-upload-btn">
-                  사진 첨부하기
-                  <input type="file" accept="image/*" onChange={handlePhotoUpload} ref={fileInputRef} style={{ display: 'none' }} />
-                </label>
-                {newDiaryPhoto && (
-                  <div className="photo-preview">
-                    <img src={newDiaryPhoto} alt="미리보기" />
-                    <button className="remove-photo" onClick={removePhoto}>×</button>
-                  </div>
-                )}
-              </div>
-
-              <div className="diary-actions">
-                <button className="primary-btn" onClick={editingDiaryId === null ? addDiary : updateDiary}>
-                  {editingDiaryId === null ? '일기 저장' : '수정 완료'}
-                </button>
-                {editingDiaryId !== null && <button onClick={cancelEditDiary} className="secondary-btn">취소</button>}
-              </div>
-            </div>
-
-            <div className="diary-list">
-              {diaries.length === 0 && (
-                <div className="empty-state">아직 작성된 일기가 없어요. 오늘 하루를 기록해보세요!</div>
-              )}
-              {[...diaries].sort((a, b) => b.date.localeCompare(a.date)).map((diary) => (
-                <div className="diary-item" key={diary.id}>
-                  <div className="diary-header">
-                    <h3>{diary.date}</h3>
-                    <div className="actions">
-                      <button className="edit-button" onClick={() => startEditDiary(diary)}>수정</button>
-                      <button className="delete-button" onClick={() => deleteDiary(diary.id)}>삭제</button>
-                    </div>
-                  </div>
-                  <p className="diary-content">{diary.content}</p>
-                  {diary.photo && <img src={diary.photo} alt="일기 사진" className="diary-saved-photo" />}
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* 백업 */}
-        {page === 'backup' && (
-          <section className="backup-page">
-            <div className="page-title">
-              <span>Myos</span>
-              <h1>데이터 관리</h1>
-              <p>앱의 모든 데이터를 백업하거나 복구할 수 있어요.</p>
-            </div>
-            <div className="home-backup-panel">
-              <div>
-                <h3 style={{ margin: '0 0 6px 0', fontSize: '1.1rem' }}>📦 데이터 백업</h3>
-                <p style={{ margin: '0 0 12px 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>현재 저장된 데이터를 백업합니다.</p>
-                <button onClick={exportData} className="primary-btn">백업 파일 다운로드 (.json)</button>
-              </div>
-              <hr style={{ border: '0', height: '1px', backgroundColor: 'var(--border-color)', margin: '0' }} />
-              <div>
-                <h3 style={{ margin: '0 0 6px 0', fontSize: '1.1rem' }}>📥 데이터 복구</h3>
-                <p style={{ margin: '0 0 12px 0', color: 'var(--text-secondary)', fontSize: '0.9rem' }}>백업 파일을 불러와 복원합니다.</p>
-                <label className="secondary-btn">
-                  백업 파일 불러오기
-                  <input type="file" accept=".json" onChange={importData} style={{ display: 'none' }} />
-                </label>
-              </div>
-            </div>
-          </section>
-        )}
-
-        {/* 할 일 */}
+        {/* 할 일 (시간 추가) */}
         {page === 'todos' && (
           <section className="todo-page">
             <div className="page-title"><span>Myos</span><h1>할 일</h1></div>
             <div className="todo-input">
               <input type="text" placeholder="할 일 입력" value={newTodo} onChange={(e) => setNewTodo(e.target.value)} />
-              <input type="date" value={newTodoDate} onChange={(e) => setNewTodoDate(e.target.value)} />
+              <input type="date" value={newTodoDate} onChange={(e) => setNewTodoDate(e.target.value)} style={{ flex: 1.2 }} />
+              <input type="time" value={newTodoTime} onChange={(e) => setNewTodoTime(e.target.value)} style={{ flex: 0.8 }} />
               <select value={newTodoPriority} onChange={(e) => setNewTodoPriority(e.target.value as TodoPriority)}>
                 <option value="high">높음</option>
                 <option value="normal">보통</option>
@@ -654,7 +581,10 @@ function App() {
               {sortTodos(todos).filter(t => t.text.includes(todoSearch)).map((todo) => (
                 <div className={`todo-item ${todo.completed ? 'completed' : ''}`} key={todo.id}>
                   <button className="check-button" onClick={() => toggleTodo(todo.id)}>{todo.completed ? '✓' : ''}</button>
-                  <span>{todo.text}</span>
+                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
+                    <span>{todo.text}</span>
+                    <small style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>{todo.date} {todo.time}</small>
+                  </div>
                   <div className="actions">
                     <button className="edit-button" onClick={() => startEditTodo(todo)}>수정</button>
                     <button className="delete-button" onClick={() => deleteTodo(todo.id)}>삭제</button>
@@ -665,30 +595,31 @@ function App() {
           </section>
         )}
 
-        {/* 일정 */}
+        {/* 일정 (수정 없음) */}
         {page === 'schedule' && (
           <section className="schedule-page">
             <div className="page-title"><span>Myos</span><h1>일정</h1></div>
             <div className="schedule-input">
               <input type="text" placeholder="일정 제목" value={newScheduleTitle} onChange={(e) => setNewScheduleTitle(e.target.value)} />
-              <div className="schedule-row">
-                <input type="date" value={newScheduleDate} onChange={(e) => setNewScheduleDate(e.target.value)} />
-                <input type="time" value={newScheduleTime} onChange={(e) => setNewScheduleTime(e.target.value)} />
+              <div className="schedule-row" style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
+                <input type="date" value={newScheduleDate} onChange={(e) => setNewScheduleDate(e.target.value)} style={{ flex: 1 }} />
+                <input type="time" value={newScheduleTime} onChange={(e) => setNewScheduleTime(e.target.value)} style={{ flex: 1 }} />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
+            <div style={{ display: 'flex', gap: '8px', margin: '15px 0 20px 0' }}>
               <button className="primary-btn" style={{ flex: 1 }} onClick={editingScheduleId === null ? addSchedule : updateSchedule}>
                 {editingScheduleId === null ? '추가' : '수정'}
               </button>
             </div>
             <div className="schedule-list">
-              {schedules.length === 0 && (
-                <div className="empty-state">등록된 일정이 없어요. 중요한 약속을 추가해보세요!</div>
-              )}
+              {schedules.length === 0 && <div className="empty-state">등록된 일정이 없어요. 중요한 약속을 추가해보세요!</div>}
               {schedules.map((schedule) => (
                 <div className="schedule-item" key={schedule.id}>
-                  <div className="schedule-time"><span>{schedule.date}</span><strong>{schedule.time}</strong></div>
-                  <div className="schedule-info"><span>{schedule.title}</span></div>
+                  <div className="schedule-time" style={{ display: 'flex', flexDirection: 'column', width: '100px' }}>
+                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{schedule.date}</span>
+                    <strong style={{ fontSize: '1.1rem' }}>{schedule.time}</strong>
+                  </div>
+                  <div className="schedule-info" style={{ flex: 1 }}><span>{schedule.title}</span></div>
                   <div className="actions">
                     <button className="edit-button" onClick={() => startEditSchedule(schedule)}>수정</button>
                     <button className="delete-button" onClick={() => deleteSchedule(schedule.id)}>삭제</button>
@@ -699,40 +630,7 @@ function App() {
           </section>
         )}
 
-        {/* 메모 */}
-        {page === 'memo' && (
-          <section className="memo-page">
-            <div className="page-title"><span>Myos</span><h1>메모</h1></div>
-            <div className="memo-input" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '15px' }}>
-              <input type="text" placeholder="제목" value={newMemoTitle} onChange={(e) => setNewMemoTitle(e.target.value)} />
-              <textarea placeholder="내용" value={newMemoContent} onChange={(e) => setNewMemoContent(e.target.value)} rows={4} />
-              <div style={{ display: 'flex', gap: '8px' }}>
-                <button className="primary-btn" style={{ flex: 1 }} onClick={editingMemoId === null ? addMemo : updateMemo}>
-                  {editingMemoId === null ? '저장' : '수정'}
-                </button>
-                {editingMemoId !== null && <button className="secondary-btn" style={{ flex: 1 }} onClick={cancelEditMemo}>취소</button>}
-              </div>
-            </div>
-            <input type="text" placeholder="메모 검색..." value={memoSearch} onChange={(e) => setMemoSearch(e.target.value)} className="search-bar" />
-            <div className="memo-list">
-              {memos.length === 0 && (
-                <div className="empty-state">작성된 메모가 없어요. 자유롭게 생각을 남겨보세요!</div>
-              )}
-              {memos.filter(m => m.title.includes(memoSearch) || m.content.includes(memoSearch)).map(memo => (
-                <div className="memo-item" key={memo.id} style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                  <h3 style={{ margin: '0 0 8px 0' }}>{memo.title}</h3>
-                  <p style={{ margin: '0 0 12px 0', whiteSpace: 'pre-wrap' }}>{memo.content}</p>
-                  <div className="actions">
-                    <button className="edit-button" onClick={() => startEditMemo(memo)}>수정</button>
-                    <button className="delete-button" onClick={() => deleteMemo(memo.id)}>삭제</button>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </section>
-        )}
-
-        {/* 지출 */}
+        {/* 지출 (구독료 포함 및 정렬) */}
         {page === 'expense' && (
           <section className="expense-page">
             <div className="page-title"><span>Myos</span><h1>지출</h1></div>
@@ -763,13 +661,15 @@ function App() {
                   </div>
                 </div>
                 
-                <input type="text" placeholder="지출 검색..." value={expenseSearch} onChange={(e) => setExpenseSearch(e.target.value)} className="search-bar" />
+                <input type="text" placeholder="지출 검색..." value={expenseSearch} onChange={(e) => setExpenseSearch(e.target.value)} className="search-bar" style={{ marginTop: '20px' }} />
                 
+                {/* 내역 날짜순 정렬 (.sort) */}
                 <div className="expense-list">
-                  {currentMonthExpenses.length === 0 && (
-                    <div className="empty-state">해당 월에 기록된 지출/수입 내역이 없어요.</div>
-                  )}
-                  {currentMonthExpenses.filter(e => e.description.includes(expenseSearch)).map(expense => (
+                  {currentMonthExpenses.length === 0 && <div className="empty-state">해당 월에 기록된 지출/수입 내역이 없어요.</div>}
+                  {currentMonthExpenses
+                    .filter(e => e.description.includes(expenseSearch))
+                    .sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime())
+                    .map(expense => (
                     <div className="expense-item" key={expense.id} style={{ justifyContent: 'space-between' }}>
                       <div>
                         <div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{expense.date}</div>
@@ -799,20 +699,133 @@ function App() {
                     <small>{expenseMonth} 총 지출</small>
                     <div className="expense-text">-{totalExpense.toLocaleString()}원</div>
                   </div>
+                  <div className="summary-box">
+                    <small>매달 고정 지출</small>
+                    <div className="expense-text" style={{ color: 'var(--text-secondary)' }}>-{totalSubAmount.toLocaleString()}원</div>
+                  </div>
                   <hr />
                   <div className="summary-box total">
-                    <small>{expenseMonth} 잔액</small>
+                    <small>{expenseMonth} 남은 잔액</small>
                     <div className={balance >= 0 ? 'income-text' : 'expense-text'}>
                       {balance.toLocaleString()}원
                     </div>
                   </div>
+                </div>
+
+                {/* 고정 지출 관리 영역 추가 */}
+                <div className="expense-summary-panel" style={{ marginTop: '20px', padding: '16px' }}>
+                  <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem' }}>🔄 고정 지출 등록</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
+                    <input type="text" placeholder="예: 넷플릭스" value={newSubName} onChange={e => setNewSubName(e.target.value)} style={{ padding: '8px' }} />
+                    <input type="text" placeholder="금액" value={newSubAmount} onChange={e => setNewSubAmount(e.target.value)} style={{ padding: '8px' }} />
+                    <input type="number" placeholder="결제일 (1~31)" value={newSubDay} onChange={e => setNewSubDay(e.target.value)} style={{ padding: '8px' }} />
+                    <button className="secondary-btn" onClick={addSubscription} style={{ padding: '8px' }}>추가</button>
+                  </div>
+                  {subscriptions.map(sub => (
+                    <div key={sub.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '8px 0', borderTop: '1px solid var(--border-color)' }}>
+                      <div>매월 {sub.billingDay}일<br/><strong>{sub.name}</strong></div>
+                      <div style={{ textAlign: 'right' }}>
+                        <div>{sub.amount.toLocaleString()}원</div>
+                        <button onClick={() => deleteSubscription(sub.id)} style={{ background: 'transparent', border: 'none', color: '#ea4335', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}>삭제</button>
+                      </div>
+                    </div>
+                  ))}
                 </div>
               </div>
             </div>
           </section>
         )}
 
-        {/* 오늘 */}
+        {/* 메모, 일기, 데이터 관리, 오늘은 수정 없이 기존 유지 */}
+        {page === 'memo' && (
+          <section className="memo-page">
+            <div className="page-title"><span>Myos</span><h1>메모</h1></div>
+            <div className="memo-input" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '15px' }}>
+              <input type="text" placeholder="제목" value={newMemoTitle} onChange={(e) => setNewMemoTitle(e.target.value)} />
+              <textarea placeholder="내용" value={newMemoContent} onChange={(e) => setNewMemoContent(e.target.value)} rows={4} />
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <button className="primary-btn" style={{ flex: 1 }} onClick={editingMemoId === null ? addMemo : updateMemo}>
+                  {editingMemoId === null ? '저장' : '수정'}
+                </button>
+                {editingMemoId !== null && <button className="secondary-btn" style={{ flex: 1 }} onClick={cancelEditMemo}>취소</button>}
+              </div>
+            </div>
+            <input type="text" placeholder="메모 검색..." value={memoSearch} onChange={(e) => setMemoSearch(e.target.value)} className="search-bar" />
+            <div className="memo-list">
+              {memos.length === 0 && <div className="empty-state">작성된 메모가 없어요. 자유롭게 생각을 남겨보세요!</div>}
+              {memos.filter(m => m.title.includes(memoSearch) || m.content.includes(memoSearch)).map(memo => (
+                <div className="memo-item" key={memo.id} style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <h3 style={{ margin: '0 0 8px 0' }}>{memo.title}</h3>
+                  <p style={{ margin: '0 0 12px 0', whiteSpace: 'pre-wrap' }}>{memo.content}</p>
+                  <div className="actions">
+                    <button className="edit-button" onClick={() => startEditMemo(memo)}>수정</button>
+                    <button className="delete-button" onClick={() => deleteMemo(memo.id)}>삭제</button>
+                  </div>
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {page === 'diary' && (
+          <section className="diary-page">
+            <div className="page-title"><span>Myos</span><h1>일기장</h1><p>오늘 하루의 생각과 사진을 남겨보세요.</p></div>
+            <div className="diary-input">
+              <input type="date" value={newDiaryDate} onChange={(e) => setNewDiaryDate(e.target.value)} />
+              <textarea placeholder="오늘 하루는 어땠나요?" value={newDiaryContent} onChange={(e) => setNewDiaryContent(e.target.value)} rows={5} />
+              <div className="photo-upload-section">
+                <label className="photo-upload-btn">사진 첨부하기<input type="file" accept="image/*" onChange={handlePhotoUpload} ref={fileInputRef} style={{ display: 'none' }} /></label>
+                {newDiaryPhoto && (
+                  <div className="photo-preview">
+                    <img src={newDiaryPhoto} alt="미리보기" />
+                    <button className="remove-photo" onClick={removePhoto}>×</button>
+                  </div>
+                )}
+              </div>
+              <div className="diary-actions">
+                <button className="primary-btn" onClick={editingDiaryId === null ? addDiary : updateDiary}>{editingDiaryId === null ? '일기 저장' : '수정 완료'}</button>
+                {editingDiaryId !== null && <button onClick={cancelEditDiary} className="secondary-btn">취소</button>}
+              </div>
+            </div>
+            <div className="diary-list">
+              {diaries.length === 0 && <div className="empty-state">아직 작성된 일기가 없어요. 오늘 하루를 기록해보세요!</div>}
+              {[...diaries].sort((a, b) => b.date.localeCompare(a.date)).map((diary) => (
+                <div className="diary-item" key={diary.id} style={{ flexDirection: 'column', alignItems: 'stretch' }}>
+                  <div className="diary-header">
+                    <h3>{diary.date}</h3>
+                    <div className="actions">
+                      <button className="edit-button" onClick={() => startEditDiary(diary)}>수정</button>
+                      <button className="delete-button" onClick={() => deleteDiary(diary.id)}>삭제</button>
+                    </div>
+                  </div>
+                  <p className="diary-content" style={{ marginTop: '10px' }}>{diary.content}</p>
+                  {diary.photo && <img src={diary.photo} alt="일기 사진" className="diary-saved-photo" />}
+                </div>
+              ))}
+            </div>
+          </section>
+        )}
+
+        {page === 'backup' && (
+          <section className="backup-page">
+            <div className="page-title"><span>Myos</span><h1>데이터 관리</h1></div>
+            <div className="home-backup-panel">
+              <div>
+                <h3 style={{ margin: '0 0 6px 0', fontSize: '1.1rem' }}>📦 데이터 백업</h3>
+                <button onClick={exportData} className="primary-btn">백업 파일 다운로드 (.json)</button>
+              </div>
+              <hr style={{ border: '0', height: '1px', backgroundColor: 'var(--border-color)', margin: '0' }} />
+              <div>
+                <h3 style={{ margin: '0 0 6px 0', fontSize: '1.1rem' }}>📥 데이터 복구</h3>
+                <label className="secondary-btn">
+                  백업 파일 불러오기
+                  <input type="file" accept=".json" onChange={importData} style={{ display: 'none' }} />
+                </label>
+              </div>
+            </div>
+          </section>
+        )}
+
         {page === 'today' && (
           <section className="today-page">
             <div className="today-header"><span>Myos</span><h1>오늘</h1><p>{getTodayDisplayKST()}</p></div>
@@ -824,7 +837,10 @@ function App() {
               {todos.filter(t => t.date === getTodayKST()).map(todo => (
                 <div className="today-todo" key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px', background: 'var(--glass-bg)', borderRadius: '12px', marginBottom: '8px', border: '1px solid var(--glass-border)' }}>
                   <button onClick={() => toggleTodo(todo.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '18px' }}>{todo.completed ? '✓' : '○'}</button>
-                  <span style={{ textDecoration: todo.completed ? 'line-through' : 'none', color: todo.completed ? 'var(--text-secondary)' : 'var(--text-primary)' }}>{todo.text}</span>
+                  <span style={{ textDecoration: todo.completed ? 'line-through' : 'none', color: todo.completed ? 'var(--text-secondary)' : 'var(--text-primary)' }}>
+                    {todo.time && <strong style={{ marginRight: '8px' }}>{todo.time}</strong>}
+                    {todo.text}
+                  </span>
                 </div>
               ))}
             </div>

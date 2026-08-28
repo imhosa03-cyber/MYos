@@ -38,7 +38,7 @@ button, input, select, textarea { font: inherit; }
 }
 
 /* ==========================================
-   ✨ 아래에서 쓱 올라와서 1초 동안 아주 천천히 녹아내리는 오프닝
+   ✨ 아래에서 쓱 올라와서 아주 천천히 녹아내리는 오프닝
 ========================================== */
 .splash-screen {
   position: fixed;
@@ -49,7 +49,6 @@ button, input, select, textarea { font: inherit; }
   align-items: center;
   background: var(--bg-color);
   opacity: 1;
-  /* 페이드 아웃 시간을 1.1초로 아주 길고 부드럽게 설정 */
   transition: opacity 1.1s cubic-bezier(0.25, 1, 0.5, 1);
 }
 .splash-screen.fade-out {
@@ -58,7 +57,6 @@ button, input, select, textarea { font: inherit; }
 }
 .splash-content {
   text-align: center;
-  /* 아래(60px 아래)에서 위로 묵직하게 쓱 올라오는 애니메이션 (1.2초) */
   animation: splashSlideUp 1.2s cubic-bezier(0.16, 1, 0.3, 1) forwards;
 }
 .splash-logo {
@@ -274,30 +272,54 @@ input[type="text"]:focus, textarea:focus { border-color: var(--primary-color); b
 .delete-button:hover, .actions button:last-child:hover { background: #fce8e6; color: #d93025; }
 .actions { display: flex; gap: 6px; }
 
-/* 캘린더 */
+/* -------------------------------------
+   캘린더 (찌그러짐 방지 & 월별 요약 추가)
+---------------------------------------- */
+.calendar-summary-panel {
+  display: flex; gap: 16px; margin-bottom: 24px; padding: 16px;
+  background: var(--glass-bg); backdrop-filter: blur(12px); -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border); border-radius: 16px;
+}
+.cal-sum-item { flex: 1; text-align: center; }
+.cal-sum-item small { color: var(--text-secondary); font-size: 13px; font-weight: 500; display: block; margin-bottom: 6px; }
+.cal-sum-item div { font-size: 18px; font-weight: 700; }
+
 .calendar-header { display: flex; justify-content: space-between; align-items: center; margin-bottom: 20px; }
 .calendar-header h2 { font-size: 20px; font-weight: 600; margin: 0; color: var(--text-primary); }
 .calendar-header button { border: none; background: var(--hover-bg); width: 36px; height: 36px; border-radius: 50%; cursor: pointer; color: var(--text-secondary); }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 8px; }
 .calendar-day-header { text-align: center; font-size: 13px; font-weight: 600; color: var(--text-secondary); padding-bottom: 8px; }
+
 .calendar-cell { 
   background: var(--glass-bg); 
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border); 
-  border-radius: 12px; min-height: 90px; padding: 8px; display: flex; flex-direction: column; 
+  border-radius: 12px; 
+  height: 110px;        /* 강제 고정 크기 */
+  min-height: 110px;    /* 찌그러짐 방지 */
+  padding: 8px; 
+  display: flex; 
+  flex-direction: column; 
   box-shadow: 0 4px 16px rgba(0,0,0,0.02);
+  overflow-y: auto;     /* 내용이 넘치면 스크롤 생성 */
 }
+
+/* 캘린더 안쪽 예쁜 스크롤바 */
+.calendar-cell::-webkit-scrollbar { width: 4px; }
+.calendar-cell::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 4px; }
+
 .calendar-cell.empty { background: transparent; border: none; box-shadow: none; }
 .calendar-cell.today { border: 2px solid var(--primary-color); background: var(--hover-bg); }
 .day-number { font-size: 14px; font-weight: 500; color: var(--text-primary); margin-bottom: 6px; }
 .calendar-cell.today .day-number { color: var(--primary-color); font-weight: 700; }
-.cell-content { display: flex; flex-direction: column; gap: 4px; overflow-y: auto; }
+.cell-content { display: flex; flex-direction: column; gap: 4px; }
 .badge { font-size: 10px; padding: 4px 6px; border-radius: 4px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 500; }
 .badge.schedule { background: rgba(26, 115, 232, 0.1); color: var(--primary-color); }
 .badge.todo { background: rgba(217, 48, 37, 0.1); color: #d93025; }
 .badge.income { background: rgba(52, 168, 83, 0.1); color: #34a853; }
 .badge.expense { background: rgba(217, 48, 37, 0.1); color: #d93025; }
+.badge.sub { background: rgba(100, 100, 100, 0.1); color: var(--text-secondary); }
 .badge.diary { background: rgba(242, 153, 0, 0.1); color: #f29900; }
 
 /* 일기 */

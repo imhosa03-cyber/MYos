@@ -3,26 +3,15 @@ import './App.css'
 
 const getTodayKST = () => {
   const now = new Date()
-  return new Intl.DateTimeFormat('en-CA', {
-    timeZone: 'Asia/Seoul',
-    year: 'numeric',
-    month: '2-digit',
-    day: '2-digit',
-  }).format(now)
+  return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Seoul', year: 'numeric', month: '2-digit', day: '2-digit' }).format(now)
 }
 
 const getTodayDisplayKST = () => {
   const now = new Date()
-  return new Intl.DateTimeFormat('ko-KR', {
-    timeZone: 'Asia/Seoul',
-    month: 'long',
-    day: 'numeric',
-    weekday: 'long',
-  }).format(now)
+  return new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', weekday: 'long' }).format(now)
 }
 
 type TodoPriority = 'high' | 'normal' | 'low'
-
 type Todo = { id: number; text: string; date: string; time: string; priority: TodoPriority; completed: boolean }
 type Schedule = { id: number; title: string; date: string; time: string }
 type Memo = { id: number; title: string; content: string; date: string }
@@ -48,7 +37,6 @@ function App() {
   const [isLoading, setIsLoading] = useState(true)
   const [isFading, setIsFading] = useState(false)
 
-  // 🔒 잠금화면 상태 관리
   const [savedPin, setSavedPin] = useState<string>(() => localStorage.getItem('myos-pin') || '')
   const [isLocked, setIsLocked] = useState<boolean>(() => !!localStorage.getItem('myos-pin'))
   const [inputPin, setInputPin] = useState('')
@@ -100,10 +88,10 @@ function App() {
   const [launchers, setLaunchers] = useState<Launcher[]>(() => { const saved = localStorage.getItem('myos-launchers'); return saved ? JSON.parse(saved) : [] })
   const [newLauncherName, setNewLauncherName] = useState(''); const [newLauncherUrl, setNewLauncherUrl] = useState('')
 
-  // 🍅 포모도로 타이머 상태
   const [timeLeft, setTimeLeft] = useState(50 * 60)
   const [isTimerRunning, setIsTimerRunning] = useState(false)
   const [timerMode, setTimerMode] = useState<'study' | 'break'>('study')
+  const [customMinutes, setCustomMinutes] = useState(50)
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>
@@ -112,19 +100,27 @@ function App() {
     } else if (timeLeft === 0) {
       setIsTimerRunning(false)
       if (Notification.permission === 'granted') {
-        new Notification('MYos 타이머', { body: timerMode === 'study' ? '50분 집중 완료! 10분 휴식하세요.' : '10분 휴식 끝! 다시 집중해볼까요?' })
+        new Notification('Pomodoro Timer', { body: timerMode === 'study' ? '집중 시간이 종료되었습니다! 휴식하세요.' : '휴식 시간이 종료되었습니다! 다시 집중해볼까요?' })
       }
-      alert(timerMode === 'study' ? '집중 시간이 끝났습니다! 휴식하세요 ☕' : '휴식이 끝났습니다! 다시 집중해봅시다 🔥')
-      setTimerMode(timerMode === 'study' ? 'break' : 'study')
-      setTimeLeft(timerMode === 'study' ? 10 * 60 : 50 * 60)
+      alert(timerMode === 'study' ? '집중 시간 종료! 휴식하세요 ☕' : '휴식 시간 종료! 다시 집중해봅시다 🔥')
+      const nextMode = timerMode === 'study' ? 'break' : 'study'
+      setTimerMode(nextMode)
+      setTimeLeft(nextMode === 'study' ? customMinutes * 60 : 10 * 60)
     }
     return () => clearInterval(interval)
-  }, [isTimerRunning, timeLeft, timerMode])
+  }, [isTimerRunning, timeLeft, timerMode, customMinutes])
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0')
     const s = (seconds % 60).toString().padStart(2, '0')
     return `${m}:${s}`
+  }
+
+  const changeTimerDuration = (mins: number) => {
+    setIsTimerRunning(false)
+    setCustomMinutes(mins)
+    setTimerMode('study')
+    setTimeLeft(mins * 60)
   }
 
   const fileInputRef = useRef<HTMLInputElement>(null)
@@ -265,7 +261,6 @@ function App() {
     }
   }
 
-  // 🔒 잠금화면 렌더링
   if (isLocked) {
     return (
       <div className={`app lock-screen-bg ${isDarkMode ? 'dark' : ''}`}>
@@ -305,7 +300,7 @@ function App() {
           <button onClick={() => navigateTo('home')}>홈</button>
           <button onClick={() => navigateTo('today')}>오늘</button>
           <button onClick={() => navigateTo('launcher')}>퀵 런처</button>
-          <button onClick={() => navigateTo('timer')}>타이머</button>
+          <button onClick={() => navigateTo('timer')}>Pomodoro Timer</button>
           <button onClick={() => navigateTo('calendar')}>캘린더</button>
           <button onClick={() => navigateTo('todos')}>할 일</button>
           <button onClick={() => navigateTo('schedule')}>일정</button>
@@ -361,25 +356,25 @@ function App() {
           </>
         )}
 
-        {/* 🍅 포모도로 타이머 페이지 */}
         {page === 'timer' && (
           <section className="timer-page">
-            <div className="page-title"><span>Myos</span><h1>타이머</h1><p>50분 집중, 10분 휴식 루틴.</p></div>
+            <div className="page-title"><span>Myos</span><h1>Pomodoro Timer</h1><p>자유로운 집중 & 휴식 루틴 관리.</p></div>
             <div className="timer-container">
-              <div className="timer-mode-selector">
-                <button className={timerMode === 'study' ? 'active' : ''} onClick={() => { setTimerMode('study'); setTimeLeft(50 * 60); setIsTimerRunning(false) }}>집중 (50분)</button>
-                <button className={timerMode === 'break' ? 'active' : ''} onClick={() => { setTimerMode('break'); setTimeLeft(10 * 60); setIsTimerRunning(false) }}>휴식 (10분)</button>
-              </div>
+              <div className="timer-status-badge">{timerMode === 'study' ? '집중 세션' : '휴식 세션'}</div>
               <div className="timer-display">{formatTime(timeLeft)}</div>
+              <div className="timer-presets">
+                <button className={customMinutes === 25 ? 'active-preset' : ''} onClick={() => changeTimerDuration(25)}>25분 집중</button>
+                <button className={customMinutes === 50 ? 'active-preset' : ''} onClick={() => changeTimerDuration(50)}>50분 집중</button>
+                <button className={customMinutes === 60 ? 'active-preset' : ''} onClick={() => changeTimerDuration(60)}>60분 집중</button>
+              </div>
               <div className="timer-controls">
                 <button className="primary-btn" onClick={() => setIsTimerRunning(!isTimerRunning)}>{isTimerRunning ? '일시정지' : '시작'}</button>
-                <button className="secondary-btn" onClick={() => { setIsTimerRunning(false); setTimeLeft(timerMode === 'study' ? 50 * 60 : 10 * 60) }}>초기화</button>
+                <button className="secondary-btn" onClick={() => { setIsTimerRunning(false); setTimeLeft(timerMode === 'study' ? customMinutes * 60 : 10 * 60) }}>초기화</button>
               </div>
             </div>
           </section>
         )}
 
-        {/* ⚙️ 설정 페이지 (잠금 설정) */}
         {page === 'settings' && (
           <section className="settings-page">
             <div className="page-title"><span>Myos</span><h1>설정</h1><p>보안 및 시스템 설정.</p></div>
@@ -390,7 +385,7 @@ function App() {
                 <input type="password" placeholder="4자리 숫자 입력" maxLength={4} value={setupPin} onChange={e => setSetupPin(e.target.value.replace(/[^0-9]/g, ''))} style={{ flex: 1, padding: '12px' }} />
                 <button className="primary-btn" onClick={() => {
                   if (setupPin.length === 4) {
-                    localStorage.setItem('myos-pin', setupPin); setSavedPin(setupPin); alert('비밀번호가 설정되었습니다. 새로고침 시 잠금화면이 표시됩니다.'); setSetupPin('')
+                    localStorage.setItem('myos-pin', setupPin); setSavedPin(setupPin); alert('비밀번호가 설정되었습니다.'); setSetupPin('')
                   } else { alert('4자리 숫자를 입력해주세요.') }
                 }}>등록</button>
               </div>
@@ -403,7 +398,6 @@ function App() {
           </section>
         )}
 
-        {/* 🚀 퀵 런처 페이지 */}
         {page === 'launcher' && (
           <section className="launcher-page">
             <div className="page-title"><span>Myos</span><h1>퀵 런처</h1><p>자주 접속하는 링크를 등록하세요.</p></div>
@@ -424,7 +418,6 @@ function App() {
           </section>
         )}
 
-        {/* 📅 캘린더 페이지 */}
         {page === 'calendar' && (
           <section className="calendar-page">
             <div className="page-title"><span>Myos</span><h1>캘린더</h1></div>
@@ -466,7 +459,6 @@ function App() {
           </section>
         )}
 
-        {/* ✅ 할 일 페이지 */}
         {page === 'todos' && (
           <section className="todo-page">
             <div className="page-title"><span>Myos</span><h1>할 일</h1></div>
@@ -503,7 +495,6 @@ function App() {
           </section>
         )}
 
-        {/* 📅 일정 페이지 */}
         {page === 'schedule' && (
           <section className="schedule-page">
             <div className="page-title"><span>Myos</span><h1>일정</h1></div>
@@ -533,7 +524,6 @@ function App() {
           </section>
         )}
 
-        {/* 💸 지출 페이지 */}
         {page === 'expense' && (
           <section className="expense-page">
             <div className="page-title"><span>Myos</span><h1>지출</h1></div>
@@ -598,7 +588,6 @@ function App() {
           </section>
         )}
 
-        {/* 📝 메모 페이지 */}
         {page === 'memo' && (
           <section className="memo-page">
             <div className="page-title"><span>Myos</span><h1>메모</h1></div>
@@ -623,7 +612,6 @@ function App() {
           </section>
         )}
 
-        {/* 📖 일기 페이지 */}
         {page === 'diary' && (
           <section className="diary-page">
             <div className="page-title"><span>Myos</span><h1>일기장</h1></div>
@@ -655,7 +643,6 @@ function App() {
           </section>
         )}
 
-        {/* 📦 백업 페이지 */}
         {page === 'backup' && (
           <section className="backup-page">
             <div className="page-title"><span>Myos</span><h1>데이터 관리</h1></div>
@@ -667,7 +654,6 @@ function App() {
           </section>
         )}
 
-        {/* ☀️ 오늘 페이지 */}
         {page === 'today' && (
           <section className="today-page">
             <div className="today-header"><span>Myos</span><h1>오늘</h1><p>{getTodayDisplayKST()}</p></div>

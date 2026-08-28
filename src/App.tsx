@@ -11,6 +11,13 @@ const getTodayDisplayKST = () => {
   return new Intl.DateTimeFormat('ko-KR', { timeZone: 'Asia/Seoul', month: 'long', day: 'numeric', weekday: 'long' }).format(now)
 }
 
+// 📱 햅틱(진동) 피드백 함수
+const triggerHaptic = () => {
+  if (typeof window !== 'undefined' && window.navigator && window.navigator.vibrate) {
+    window.navigator.vibrate(40); // 40ms의 기분 좋은 짧은 진동
+  }
+}
+
 type TodoPriority = 'high' | 'normal' | 'low'
 type Todo = { id: number; text: string; date: string; time: string; priority: TodoPriority; completed: boolean }
 type Schedule = { id: number; title: string; date: string; time: string }
@@ -88,7 +95,6 @@ function App() {
   const [launchers, setLaunchers] = useState<Launcher[]>(() => { const saved = localStorage.getItem('myos-launchers'); return saved ? JSON.parse(saved) : [] })
   const [newLauncherName, setNewLauncherName] = useState(''); const [newLauncherUrl, setNewLauncherUrl] = useState('')
 
-  // 🍅 Pomodoro Timer 상태 (자유 시간 설정 및 집중/휴식 모드 복구)
   const [studyMinutes, setStudyMinutes] = useState(50)
   const [breakMinutes, setBreakMinutes] = useState(10)
   const [timeLeft, setTimeLeft] = useState(50 * 60)
@@ -101,6 +107,7 @@ function App() {
       interval = setInterval(() => setTimeLeft(prev => prev - 1), 1000)
     } else if (timeLeft === 0) {
       setIsTimerRunning(false)
+      triggerHaptic();
       if (Notification.permission === 'granted') {
         new Notification('Pomodoro Timer', { body: timerMode === 'study' ? '집중 시간이 종료되었습니다! 휴식하세요.' : '휴식 시간이 종료되었습니다! 다시 집중해볼까요?' })
       }
@@ -139,6 +146,7 @@ function App() {
   }
 
   const exportData = () => {
+    triggerHaptic();
     const data = { todos: localStorage.getItem('myos-todos'), schedules: localStorage.getItem('myos-schedules'), memos: localStorage.getItem('myos-memos'), expenses: localStorage.getItem('myos-expenses'), diaries: localStorage.getItem('myos-diaries'), subscriptions: localStorage.getItem('myos-subscriptions'), launchers: localStorage.getItem('myos-launchers') }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `myos-backup-${getTodayKST()}.json`; a.click(); URL.revokeObjectURL(url)
@@ -164,50 +172,50 @@ function App() {
   }
   const removePhoto = () => { setNewDiaryPhoto(null); if (fileInputRef.current) fileInputRef.current.value = '' }
 
-  const addDiary = () => { const content = newDiaryContent.trim(); if (!content && !newDiaryPhoto) return; const diary: Diary = { id: Date.now(), date: newDiaryDate, content, photo: newDiaryPhoto }; setDiaries((current) => [diary, ...current]); setNewDiaryContent(''); removePhoto(); setNewDiaryDate(getTodayKST()) }
-  const startEditDiary = (diary: Diary) => { setEditingDiaryId(diary.id); setNewDiaryDate(diary.date); setNewDiaryContent(diary.content); setNewDiaryPhoto(diary.photo) }
-  const updateDiary = () => { const content = newDiaryContent.trim(); if (editingDiaryId === null || (!content && !newDiaryPhoto)) return; setDiaries((current) => current.map((diary) => diary.id === editingDiaryId ? { ...diary, date: newDiaryDate, content, photo: newDiaryPhoto } : diary)); setEditingDiaryId(null); setNewDiaryContent(''); removePhoto(); setNewDiaryDate(getTodayKST()) }
+  const addDiary = () => { triggerHaptic(); const content = newDiaryContent.trim(); if (!content && !newDiaryPhoto) return; const diary: Diary = { id: Date.now(), date: newDiaryDate, content, photo: newDiaryPhoto }; setDiaries((current) => [diary, ...current]); setNewDiaryContent(''); removePhoto(); setNewDiaryDate(getTodayKST()) }
+  const startEditDiary = (diary: Diary) => { triggerHaptic(); setEditingDiaryId(diary.id); setNewDiaryDate(diary.date); setNewDiaryContent(diary.content); setNewDiaryPhoto(diary.photo) }
+  const updateDiary = () => { triggerHaptic(); const content = newDiaryContent.trim(); if (editingDiaryId === null || (!content && !newDiaryPhoto)) return; setDiaries((current) => current.map((diary) => diary.id === editingDiaryId ? { ...diary, date: newDiaryDate, content, photo: newDiaryPhoto } : diary)); setEditingDiaryId(null); setNewDiaryContent(''); removePhoto(); setNewDiaryDate(getTodayKST()) }
   const cancelEditDiary = () => { setEditingDiaryId(null); setNewDiaryContent(''); removePhoto(); setNewDiaryDate(getTodayKST()) }
-  const deleteDiary = (id: number) => { setDiaries((current) => current.filter((diary) => diary.id !== id)) }
+  const deleteDiary = (id: number) => { triggerHaptic(); setDiaries((current) => current.filter((diary) => diary.id !== id)) }
 
-  const nextMonth = () => { if (calMonth === 11) { setCalYear(calYear + 1); setCalMonth(0) } else { setCalMonth(calMonth + 1) } }
-  const prevMonth = () => { if (calMonth === 0) { setCalYear(calYear - 1); setCalMonth(11) } else { setCalMonth(calMonth - 1) } }
+  const nextMonth = () => { triggerHaptic(); if (calMonth === 11) { setCalYear(calYear + 1); setCalMonth(0) } else { setCalMonth(calMonth + 1) } }
+  const prevMonth = () => { triggerHaptic(); if (calMonth === 0) { setCalYear(calYear - 1); setCalMonth(11) } else { setCalMonth(calMonth - 1) } }
   const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate()
   const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay()
   const generateCalendarDays = (): (number | null)[] => { const totalDays = getDaysInMonth(calYear, calMonth); const firstDay = getFirstDayOfMonth(calYear, calMonth); const days: (number | null)[] = []; for (let i = 0; i < firstDay; i++) days.push(null); for (let i = 1; i <= totalDays; i++) days.push(i); return days }
   const formatDate = (year: number, month: number, day: number) => { const m = String(month + 1).padStart(2, '0'); const d = String(day).padStart(2, '0'); return `${year}-${m}-${d}` }
 
-  const addTodo = () => { const text = newTodo.trim(); if (!text || !newTodoDate) return; const todo: Todo = { id: Date.now(), text, date: newTodoDate, time: newTodoTime, priority: newTodoPriority, completed: false }; setTodos((current) => [...current, todo]); setNewTodo(''); setNewTodoDate(getTodayKST()); setNewTodoTime(''); setNewTodoPriority('normal') }
-  const startEditTodo = (todo: Todo) => { setEditingTodoId(todo.id); setNewTodo(todo.text); setNewTodoDate(todo.date); setNewTodoTime(todo.time ?? ''); setNewTodoPriority(todo.priority ?? 'normal') }
-  const updateTodo = () => { const text = newTodo.trim(); if (editingTodoId === null || !text || !newTodoDate) return; setTodos((current) => current.map((todo) => todo.id === editingTodoId ? { ...todo, text, date: newTodoDate, time: newTodoTime, priority: newTodoPriority } : todo )); setEditingTodoId(null); setNewTodo(''); setNewTodoDate(getTodayKST()); setNewTodoTime(''); setNewTodoPriority('normal') }
+  const addTodo = () => { triggerHaptic(); const text = newTodo.trim(); if (!text || !newTodoDate) return; const todo: Todo = { id: Date.now(), text, date: newTodoDate, time: newTodoTime, priority: newTodoPriority, completed: false }; setTodos((current) => [...current, todo]); setNewTodo(''); setNewTodoDate(getTodayKST()); setNewTodoTime(''); setNewTodoPriority('normal') }
+  const startEditTodo = (todo: Todo) => { triggerHaptic(); setEditingTodoId(todo.id); setNewTodo(todo.text); setNewTodoDate(todo.date); setNewTodoTime(todo.time ?? ''); setNewTodoPriority(todo.priority ?? 'normal') }
+  const updateTodo = () => { triggerHaptic(); const text = newTodo.trim(); if (editingTodoId === null || !text || !newTodoDate) return; setTodos((current) => current.map((todo) => todo.id === editingTodoId ? { ...todo, text, date: newTodoDate, time: newTodoTime, priority: newTodoPriority } : todo )); setEditingTodoId(null); setNewTodo(''); setNewTodoDate(getTodayKST()); setNewTodoTime(''); setNewTodoPriority('normal') }
   const cancelEditTodo = () => { setEditingTodoId(null); setNewTodo(''); setNewTodoDate(getTodayKST()); setNewTodoTime(''); setNewTodoPriority('normal') }
-  const toggleTodo = (id: number) => { setTodos((current) => current.map((todo) => todo.id === id ? { ...todo, completed: !todo.completed } : todo )) }
-  const deleteTodo = (id: number) => { setTodos((current) => current.filter((todo) => todo.id !== id)) }
+  const toggleTodo = (id: number) => { triggerHaptic(); setTodos((current) => current.map((todo) => todo.id === id ? { ...todo, completed: !todo.completed } : todo )) }
+  const deleteTodo = (id: number) => { triggerHaptic(); setTodos((current) => current.filter((todo) => todo.id !== id)) }
 
-  const addSchedule = () => { const title = newScheduleTitle.trim(); if (!title || !newScheduleDate || !newScheduleTime) return; const schedule: Schedule = { id: Date.now(), title, date: newScheduleDate, time: newScheduleTime }; setSchedules((current) => [...current, schedule]); setNewScheduleTitle(''); setNewScheduleDate(getTodayKST()); setNewScheduleTime('') }
-  const deleteSchedule = (id: number) => { setSchedules((current) => current.filter((schedule) => schedule.id !== id)) }
-  const startEditSchedule = (schedule: Schedule) => { setEditingScheduleId(schedule.id); setNewScheduleTitle(schedule.title); setNewScheduleDate(schedule.date); setNewScheduleTime(schedule.time) }
-  const updateSchedule = () => { const title = newScheduleTitle.trim(); if (editingScheduleId === null || !title || !newScheduleDate || !newScheduleTime) return; setSchedules((current) => current.map((schedule) => schedule.id === editingScheduleId ? { ...schedule, title, date: newScheduleDate, time: newScheduleTime } : schedule )); setEditingScheduleId(null); setNewScheduleTitle(''); setNewScheduleDate(getTodayKST()); setNewScheduleTime('') }
+  const addSchedule = () => { triggerHaptic(); const title = newScheduleTitle.trim(); if (!title || !newScheduleDate || !newScheduleTime) return; const schedule: Schedule = { id: Date.now(), title, date: newScheduleDate, time: newScheduleTime }; setSchedules((current) => [...current, schedule]); setNewScheduleTitle(''); setNewScheduleDate(getTodayKST()); setNewScheduleTime('') }
+  const deleteSchedule = (id: number) => { triggerHaptic(); setSchedules((current) => current.filter((schedule) => schedule.id !== id)) }
+  const startEditSchedule = (schedule: Schedule) => { triggerHaptic(); setEditingScheduleId(schedule.id); setNewScheduleTitle(schedule.title); setNewScheduleDate(schedule.date); setNewScheduleTime(schedule.time) }
+  const updateSchedule = () => { triggerHaptic(); const title = newScheduleTitle.trim(); if (editingScheduleId === null || !title || !newScheduleDate || !newScheduleTime) return; setSchedules((current) => current.map((schedule) => schedule.id === editingScheduleId ? { ...schedule, title, date: newScheduleDate, time: newScheduleTime } : schedule )); setEditingScheduleId(null); setNewScheduleTitle(''); setNewScheduleDate(getTodayKST()); setNewScheduleTime('') }
 
-  const addMemo = () => { const title = newMemoTitle.trim(); const content = newMemoContent.trim(); if (!title || !content) return; const memo: Memo = { id: Date.now(), title, content, date: getTodayKST() }; setMemos((current) => [memo, ...current]); setNewMemoTitle(''); setNewMemoContent('') }
-  const startEditMemo = (memo: Memo) => { setEditingMemoId(memo.id); setNewMemoTitle(memo.title); setNewMemoContent(memo.content) }
+  const addMemo = () => { triggerHaptic(); const title = newMemoTitle.trim(); const content = newMemoContent.trim(); if (!title || !content) return; const memo: Memo = { id: Date.now(), title, content, date: getTodayKST() }; setMemos((current) => [memo, ...current]); setNewMemoTitle(''); setNewMemoContent('') }
+  const startEditMemo = (memo: Memo) => { triggerHaptic(); setEditingMemoId(memo.id); setNewMemoTitle(memo.title); setNewMemoContent(memo.content) }
   const cancelEditMemo = () => { setEditingMemoId(null); setNewMemoTitle(''); setNewMemoContent('') }
-  const updateMemo = () => { const title = newMemoTitle.trim(); const content = newMemoContent.trim(); if (editingMemoId === null || !title || !content) return; setMemos((current) => current.map((memo) => memo.id === editingMemoId ? { ...memo, title, content } : memo )); setEditingMemoId(null); setNewMemoTitle(''); setNewMemoContent('') }
-  const deleteMemo = (id: number) => { setMemos((current) => current.filter((memo) => memo.id !== id)) }
+  const updateMemo = () => { triggerHaptic(); const title = newMemoTitle.trim(); const content = newMemoContent.trim(); if (editingMemoId === null || !title || !content) return; setMemos((current) => current.map((memo) => memo.id === editingMemoId ? { ...memo, title, content } : memo )); setEditingMemoId(null); setNewMemoTitle(''); setNewMemoContent('') }
+  const deleteMemo = (id: number) => { triggerHaptic(); setMemos((current) => current.filter((memo) => memo.id !== id)) }
 
-  const addExpense = () => { const amount = Number(newExpenseAmount.replace(/[^0-9]/g, '')); const description = newExpenseDescription.trim(); if (!amount || amount <= 0 || !description || !newExpenseDate) return; const expense: Expense = { id: Date.now(), amount, description, type: newExpenseType, date: newExpenseDate }; setExpenses((current) => [expense, ...current]); setNewExpenseAmount(''); setNewExpenseDescription(''); setNewExpenseDate(getTodayKST()) }
-  const startEditExpense = (expense: Expense) => { setEditingExpenseId(expense.id); setNewExpenseAmount(expense.amount.toString()); setNewExpenseDescription(expense.description); setNewExpenseType(expense.type); setNewExpenseDate(expense.date) }
+  const addExpense = () => { triggerHaptic(); const amount = Number(newExpenseAmount.replace(/[^0-9]/g, '')); const description = newExpenseDescription.trim(); if (!amount || amount <= 0 || !description || !newExpenseDate) return; const expense: Expense = { id: Date.now(), amount, description, type: newExpenseType, date: newExpenseDate }; setExpenses((current) => [expense, ...current]); setNewExpenseAmount(''); setNewExpenseDescription(''); setNewExpenseDate(getTodayKST()) }
+  const startEditExpense = (expense: Expense) => { triggerHaptic(); setEditingExpenseId(expense.id); setNewExpenseAmount(expense.amount.toString()); setNewExpenseDescription(expense.description); setNewExpenseType(expense.type); setNewExpenseDate(expense.date) }
   const cancelEditExpense = () => { setEditingExpenseId(null); setNewExpenseAmount(''); setNewExpenseDescription(''); setNewExpenseType('expense'); setNewExpenseDate(getTodayKST()) }
-  const updateExpense = () => { const amount = Number(newExpenseAmount.replace(/[^0-9]/g, '')); const description = newExpenseDescription.trim(); if (editingExpenseId === null || !amount || amount <= 0 || !description || !newExpenseDate) return; setExpenses((current) => current.map((expense) => expense.id === editingExpenseId ? { ...expense, amount, description, type: newExpenseType, date: newExpenseDate } : expense )); setEditingExpenseId(null); setNewExpenseAmount(''); setNewExpenseDescription(''); setNewExpenseType('expense'); setNewExpenseDate(getTodayKST()) }
-  const deleteExpense = (id: number) => { setExpenses((current) => current.filter((expense) => expense.id !== id)) }
+  const updateExpense = () => { triggerHaptic(); const amount = Number(newExpenseAmount.replace(/[^0-9]/g, '')); const description = newExpenseDescription.trim(); if (editingExpenseId === null || !amount || amount <= 0 || !description || !newExpenseDate) return; setExpenses((current) => current.map((expense) => expense.id === editingExpenseId ? { ...expense, amount, description, type: newExpenseType, date: newExpenseDate } : expense )); setEditingExpenseId(null); setNewExpenseAmount(''); setNewExpenseDescription(''); setNewExpenseType('expense'); setNewExpenseDate(getTodayKST()) }
+  const deleteExpense = (id: number) => { triggerHaptic(); setExpenses((current) => current.filter((expense) => expense.id !== id)) }
 
-  const addSubscription = () => { const amount = Number(newSubAmount.replace(/[^0-9]/g, '')); const day = Number(newSubDay); if (!newSubName.trim() || !amount || amount <= 0 || !day || day < 1 || day > 31) return; const sub: Subscription = { id: Date.now(), name: newSubName.trim(), amount, billingDay: day }; setSubscriptions(curr => [...curr, sub]); setNewSubName(''); setNewSubAmount(''); setNewSubDay('') }
-  const deleteSubscription = (id: number) => { setSubscriptions(curr => curr.filter(s => s.id !== id)) }
+  const addSubscription = () => { triggerHaptic(); const amount = Number(newSubAmount.replace(/[^0-9]/g, '')); const day = Number(newSubDay); if (!newSubName.trim() || !amount || amount <= 0 || !day || day < 1 || day > 31) return; const sub: Subscription = { id: Date.now(), name: newSubName.trim(), amount, billingDay: day }; setSubscriptions(curr => [...curr, sub]); setNewSubName(''); setNewSubAmount(''); setNewSubDay('') }
+  const deleteSubscription = (id: number) => { triggerHaptic(); setSubscriptions(curr => curr.filter(s => s.id !== id)) }
 
-  const addLauncher = () => { let url = newLauncherUrl.trim(); if (!newLauncherName.trim() || !url) return; if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url; const launcher: Launcher = { id: Date.now(), name: newLauncherName.trim(), url }; setLaunchers(curr => [...curr, launcher]); setNewLauncherName(''); setNewLauncherUrl('') }
-  const deleteLauncher = (id: number, e: React.MouseEvent) => { e.stopPropagation(); setLaunchers(curr => curr.filter(l => l.id !== id)) }
+  const addLauncher = () => { triggerHaptic(); let url = newLauncherUrl.trim(); if (!newLauncherName.trim() || !url) return; if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url; const launcher: Launcher = { id: Date.now(), name: newLauncherName.trim(), url }; setLaunchers(curr => [...curr, launcher]); setNewLauncherName(''); setNewLauncherUrl('') }
+  const deleteLauncher = (id: number, e: React.MouseEvent) => { triggerHaptic(); e.stopPropagation(); setLaunchers(curr => curr.filter(l => l.id !== id)) }
 
-  const shiftExpenseMonth = (direction: 'prev' | 'next') => { const [year, month] = expenseMonth.split('-').map(Number); const date = new Date(year, month - 1 + (direction === 'next' ? 1 : -1), 1); const y = date.getFullYear(); const m = String(date.getMonth() + 1).padStart(2, '0'); setExpenseMonth(`${y}-${m}`) }
+  const shiftExpenseMonth = (direction: 'prev' | 'next') => { triggerHaptic(); const [year, month] = expenseMonth.split('-').map(Number); const date = new Date(year, month - 1 + (direction === 'next' ? 1 : -1), 1); const y = date.getFullYear(); const m = String(date.getMonth() + 1).padStart(2, '0'); setExpenseMonth(`${y}-${m}`) }
 
   const currentMonthExpenses = expenses.filter(e => e.date && e.date.startsWith(expenseMonth))
   const totalIncome = currentMonthExpenses.filter((e) => e.type === 'income').reduce((sum, e) => sum + e.amount, 0)
@@ -226,6 +234,7 @@ function App() {
   }
 
   const sendBriefing = () => {
+    triggerHaptic();
     const todayStr = getTodayKST()
     const todayTodos = todos.filter(t => t.date === todayStr && !t.completed).length
     const nextSch = getNearestSchedule()
@@ -241,16 +250,17 @@ function App() {
     new Notification('MYos 오늘의 브리핑', { body: briefingText })
   }
 
-  const navigateTo = (targetPage: typeof page) => { setPage(targetPage); setShowMenu(false); setShowAdd(false) }
+  const navigateTo = (targetPage: typeof page) => { triggerHaptic(); setPage(targetPage); setShowMenu(false); setShowAdd(false) }
 
   const handlePinClick = (num: string) => {
+    triggerHaptic();
     if (inputPin.length < 4) {
       const newPin = inputPin + num
       setInputPin(newPin)
       if (newPin.length === 4) {
         setTimeout(() => {
           if (newPin === savedPin) { setIsLocked(false); setInputPin('') } 
-          else { alert('비밀번호가 일치하지 않습니다.'); setInputPin('') }
+          else { triggerHaptic(); alert('비밀번호가 일치하지 않습니다.'); setInputPin('') }
         }, 100)
       }
     }
@@ -268,7 +278,7 @@ function App() {
           <div className="numpad">
             {['1','2','3','4','5','6','7','8','9','','0','←'].map((num, idx) => (
               <button key={idx} className={`num-btn ${num === '' ? 'empty' : ''}`} onClick={() => {
-                if (num === '←') setInputPin(prev => prev.slice(0, -1))
+                if (num === '←') { triggerHaptic(); setInputPin(prev => prev.slice(0, -1)); }
                 else if (num !== '') handlePinClick(num)
               }}>{num}</button>
             ))}
@@ -289,37 +299,37 @@ function App() {
         </div>
       )}
 
+      {/* 🌟 수정 포인트: 사이드 메뉴에 모던한 SVG 아이콘 적용 */}
       <aside className={`side-menu ${showMenu ? 'open' : ''}`}>
         <div className="menu-header"><span>Myos</span><button onClick={() => setShowMenu(false)}>✕</button></div>
         <nav>
-          <button onClick={() => navigateTo('home')}>홈</button>
-          <button onClick={() => navigateTo('today')}>오늘</button>
-          <button onClick={() => navigateTo('launcher')}>퀵 런처</button>
-          <button onClick={() => navigateTo('timer')}>Pomodoro Timer</button>
-          <button onClick={() => navigateTo('calendar')}>캘린더</button>
-          <button onClick={() => navigateTo('todos')}>할 일</button>
-          <button onClick={() => navigateTo('schedule')}>일정</button>
-          <button onClick={() => navigateTo('memo')}>메모</button>
-          <button onClick={() => navigateTo('diary')}>일기</button>
-          <button onClick={() => navigateTo('expense')}>지출</button>
-          <button onClick={() => navigateTo('backup')}>데이터 관리</button>
+          <button onClick={() => navigateTo('home')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>홈</span></button>
+          <button onClick={() => navigateTo('today')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg> <span>오늘</span></button>
+          <button onClick={() => navigateTo('launcher')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> <span>퀵 런처</span></button>
+          <button onClick={() => navigateTo('timer')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> <span>Pomodoro Timer</span></button>
+          <button onClick={() => navigateTo('calendar')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> <span>캘린더</span></button>
+          <button onClick={() => navigateTo('todos')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> <span>할 일</span></button>
+          <button onClick={() => navigateTo('schedule')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> <span>일정</span></button>
+          <button onClick={() => navigateTo('memo')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> <span>메모</span></button>
+          <button onClick={() => navigateTo('diary')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> <span>일기</span></button>
+          <button onClick={() => navigateTo('expense')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" ry="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> <span>지출</span></button>
+          <button onClick={() => navigateTo('backup')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg> <span>데이터 관리</span></button>
         </nav>
         <div style={{ marginTop: '12px', padding: '0 4px' }}><button onClick={requestNotification} className="secondary-btn" style={{ width: '100%', fontSize: '13px' }}>알림 권한 설정</button></div>
         <div className="dark-mode-toggle-container">
           <span className="dark-mode-label">다크 모드</span>
-          <label className="switch"><input type="checkbox" checked={isDarkMode} onChange={() => setIsDarkMode(!isDarkMode)} /><span className="slider"></span></label>
+          <label className="switch"><input type="checkbox" checked={isDarkMode} onChange={() => { triggerHaptic(); setIsDarkMode(!isDarkMode); }} /><span className="slider"></span></label>
         </div>
-        <button className="settings" onClick={() => navigateTo('settings')}>설정 (잠금)</button>
+        <button className="settings" onClick={() => navigateTo('settings')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> <span>설정 (잠금)</span></button>
       </aside>
 
       {showMenu && <div className="overlay" onClick={() => setShowMenu(false)} />}
 
       <main className="home">
-        <header><button className="menu-button" onClick={() => setShowMenu(true)}>☰</button><div className="logo">Myos</div><button className="profile-button">○</button></header>
+        <header><button className="menu-button" onClick={() => { triggerHaptic(); setShowMenu(true); }}>☰</button><div className="logo">Myos</div><button className="profile-button" onClick={triggerHaptic}>○</button></header>
 
         {page === 'home' && (
           <>
-            {/* 🌟 수정 요청: 홈 화면 문구 복구 */}
             <section className="welcome">
               <h1>오늘을 관리하세요.</h1>
               <p>필요한 것을 간단하게 시작해보세요.</p>
@@ -346,7 +356,7 @@ function App() {
                 </div>
               )
             })()}
-            <button className="add-button" onClick={() => setShowAdd(!showAdd)}>+</button>
+            <button className="add-button" onClick={() => { triggerHaptic(); setShowAdd(!showAdd); }}>+</button>
             {showAdd && (
               <div className="add-menu">
                 <button onClick={() => navigateTo('todos')}>할 일</button><button onClick={() => navigateTo('schedule')}>일정</button><button onClick={() => navigateTo('diary')}>일기 작성</button><button onClick={() => navigateTo('expense')}>지출 등록</button>
@@ -355,21 +365,17 @@ function App() {
           </>
         )}
 
-        {/* 🍅 업그레이드된 Pomodoro Timer 페이지 */}
         {page === 'timer' && (
           <section className="timer-page">
             <div className="page-title"><span>Myos</span><h1>Pomodoro Timer</h1><p>자유로운 집중 & 휴식 루틴 관리.</p></div>
             <div className="timer-container">
-              
-              {/* 🌟 수정 요청: 집중/휴식 탭 완벽 복구 */}
               <div className="timer-mode-selector">
-                <button className={timerMode === 'study' ? 'active' : ''} onClick={() => { setTimerMode('study'); setTimeLeft(studyMinutes * 60); setIsTimerRunning(false) }}>집중 모드</button>
-                <button className={timerMode === 'break' ? 'active' : ''} onClick={() => { setTimerMode('break'); setTimeLeft(breakMinutes * 60); setIsTimerRunning(false) }}>휴식 모드</button>
+                <button className={timerMode === 'study' ? 'active' : ''} onClick={() => { triggerHaptic(); setTimerMode('study'); setTimeLeft(studyMinutes * 60); setIsTimerRunning(false) }}>집중 모드</button>
+                <button className={timerMode === 'break' ? 'active' : ''} onClick={() => { triggerHaptic(); setTimerMode('break'); setTimeLeft(breakMinutes * 60); setIsTimerRunning(false) }}>휴식 모드</button>
               </div>
               
               <div className="timer-display">{formatTime(timeLeft)}</div>
 
-              {/* 🌟 수정 요청: 고정 버튼 삭제하고 스크롤/직접 입력 가능한 시간 조절기 추가 */}
               {!isTimerRunning && (
                 <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginBottom: '32px' }}>
                   <span style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
@@ -380,6 +386,7 @@ function App() {
                     min="1" max="180"
                     value={timerMode === 'study' ? studyMinutes : breakMinutes}
                     onChange={(e) => {
+                      triggerHaptic();
                       const val = parseInt(e.target.value) || 1;
                       if (timerMode === 'study') { setStudyMinutes(val); setTimeLeft(val * 60); }
                       else { setBreakMinutes(val); setTimeLeft(val * 60); }
@@ -388,11 +395,11 @@ function App() {
                   />
                 </div>
               )}
-              {isTimerRunning && <div style={{ height: '74px' }}></div> /* 타이머 작동 중 높이 유지용 빈 공간 */}
+              {isTimerRunning && <div style={{ height: '74px' }}></div>}
 
               <div className="timer-controls">
-                <button className="primary-btn" onClick={() => setIsTimerRunning(!isTimerRunning)}>{isTimerRunning ? '일시정지' : '시작'}</button>
-                <button className="secondary-btn" onClick={() => { setIsTimerRunning(false); setTimeLeft(timerMode === 'study' ? studyMinutes * 60 : breakMinutes * 60) }}>초기화</button>
+                <button className="primary-btn" onClick={() => { triggerHaptic(); setIsTimerRunning(!isTimerRunning) }}>{isTimerRunning ? '일시정지' : '시작'}</button>
+                <button className="secondary-btn" onClick={() => { triggerHaptic(); setIsTimerRunning(false); setTimeLeft(timerMode === 'study' ? studyMinutes * 60 : breakMinutes * 60) }}>초기화</button>
               </div>
             </div>
           </section>
@@ -407,6 +414,7 @@ function App() {
               <div style={{ display: 'flex', gap: '8px' }}>
                 <input type="password" placeholder="4자리 숫자 입력" maxLength={4} value={setupPin} onChange={e => setSetupPin(e.target.value.replace(/[^0-9]/g, ''))} style={{ flex: 1, padding: '12px' }} />
                 <button className="primary-btn" onClick={() => {
+                  triggerHaptic();
                   if (setupPin.length === 4) {
                     localStorage.setItem('myos-pin', setupPin); setSavedPin(setupPin); alert('비밀번호가 설정되었습니다.'); setSetupPin('')
                   } else { alert('4자리 숫자를 입력해주세요.') }
@@ -414,7 +422,7 @@ function App() {
               </div>
               {savedPin && (
                 <button className="secondary-btn" style={{ width: '100%', marginTop: '12px', color: '#ea4335' }} onClick={() => {
-                  localStorage.removeItem('myos-pin'); setSavedPin(''); setIsLocked(false); alert('비밀번호가 해제되었습니다.')
+                  triggerHaptic(); localStorage.removeItem('myos-pin'); setSavedPin(''); setIsLocked(false); alert('비밀번호가 해제되었습니다.')
                 }}>비밀번호 잠금 해제 (삭제)</button>
               )}
             </div>
@@ -432,7 +440,7 @@ function App() {
             <div className="launcher-grid">
               {launchers.length === 0 && <div className="empty-state">등록된 바로가기가 없습니다.</div>}
               {launchers.map(launcher => (
-                <div className="launcher-card" key={launcher.id} onClick={() => window.open(launcher.url, '_blank')}>
+                <div className="launcher-card" key={launcher.id} onClick={() => { triggerHaptic(); window.open(launcher.url, '_blank'); }}>
                   <div className="launcher-content"><span className="launcher-name">{launcher.name}</span><span className="launcher-url">{launcher.url.replace(/^https?:\/\//, '')}</span></div>
                   <button className="launcher-delete" onClick={(e) => deleteLauncher(launcher.id, e)}>✕</button>
                 </div>
@@ -445,8 +453,8 @@ function App() {
           <section className="calendar-page">
             <div className="page-title"><span>Myos</span><h1>캘린더</h1></div>
             <div className="calendar-summary-panel">
-              <div className="cal-sum-item"><small>수입</small><div style={{ color: '#34a853' }}>+{expenses.filter(e => e.date.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`) && e.type === 'income').reduce((s, e) => s + e.amount, 0).toLocaleString()}</div></div>
-              <div className="cal-sum-item"><small>지출</small><div style={{ color: '#ea4335' }}>-{expenses.filter(e => e.date.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`) && e.type === 'expense').reduce((s, e) => s + e.amount, 0).toLocaleString()}</div></div>
+              <div className="cal-sum-item"><small>수입</small><div style={{ color: '#34c759' }}>+{expenses.filter(e => e.date.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`) && e.type === 'income').reduce((s, e) => s + e.amount, 0).toLocaleString()}</div></div>
+              <div className="cal-sum-item"><small>지출</small><div style={{ color: '#ff3b30' }}>-{expenses.filter(e => e.date.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`) && e.type === 'expense').reduce((s, e) => s + e.amount, 0).toLocaleString()}</div></div>
               <div className="cal-sum-item"><small>고정 지출</small><div style={{ color: 'var(--text-secondary)' }}>-{totalSubAmount.toLocaleString()}</div></div>
             </div>
             <div className="calendar-header">
@@ -497,7 +505,7 @@ function App() {
             </div>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
               <button className="primary-btn" style={{ flex: 1 }} onClick={editingTodoId === null ? addTodo : updateTodo}>{editingTodoId === null ? '추가' : '저장'}</button>
-              {editingTodoId !== null && <button className="secondary-btn" style={{ flex: 1 }} onClick={cancelEditTodo}>취소</button>}
+              {editingTodoId !== null && <button className="secondary-btn" style={{ flex: 1 }} onClick={() => { triggerHaptic(); cancelEditTodo(); }}>취소</button>}
             </div>
             <input type="text" placeholder="검색어 입력..." value={todoSearch} onChange={(e) => setTodoSearch(e.target.value)} className="search-bar" />
             <div className="todo-list">
@@ -530,7 +538,7 @@ function App() {
             </div>
             <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
               <button className="primary-btn" style={{ flex: 1 }} onClick={editingScheduleId === null ? addSchedule : updateSchedule}>{editingScheduleId === null ? '추가' : '수정'}</button>
-              {editingScheduleId !== null && <button className="secondary-btn" style={{ flex: 1 }} onClick={() => setEditingScheduleId(null)}>취소</button>}
+              {editingScheduleId !== null && <button className="secondary-btn" style={{ flex: 1 }} onClick={() => { triggerHaptic(); setEditingScheduleId(null); }}>취소</button>}
             </div>
             <div className="schedule-list">
               {schedules.length === 0 && <div className="empty-state">내역이 없습니다.</div>}
@@ -551,9 +559,9 @@ function App() {
           <section className="expense-page">
             <div className="page-title"><span>Myos</span><h1>지출</h1></div>
             <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', marginBottom: '20px', background: 'var(--glass-bg)', padding: '12px 20px', borderRadius: '16px', border: '1px solid var(--glass-border)' }}>
-              <button onClick={() => shiftExpenseMonth('prev')} style={{ border: 'none', background: 'var(--hover-bg)', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', color: 'var(--text-primary)' }}>이전</button>
+              <button onClick={() => shiftExpenseMonth('prev')} style={{ border: 'none', background: 'rgba(255,255,255,0.3)', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', color: 'var(--text-primary)' }}>이전</button>
               <strong style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>{expenseMonth}</strong>
-              <button onClick={() => shiftExpenseMonth('next')} style={{ border: 'none', background: 'var(--hover-bg)', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', color: 'var(--text-primary)' }}>다음</button>
+              <button onClick={() => shiftExpenseMonth('next')} style={{ border: 'none', background: 'rgba(255,255,255,0.3)', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', color: 'var(--text-primary)' }}>다음</button>
             </div>
             <div className="expense-dashboard">
               <div className="expense-main">
@@ -566,7 +574,7 @@ function App() {
                   <input type="text" placeholder="내용" value={newExpenseDescription} onChange={(e) => setNewExpenseDescription(e.target.value)} style={{ marginBottom: '16px' }} />
                   <div style={{ display: 'flex', gap: '8px' }}>
                     <button className="primary-btn" style={{ flex: 1 }} onClick={editingExpenseId === null ? addExpense : updateExpense}>{editingExpenseId === null ? '등록' : '수정'}</button>
-                    {editingExpenseId !== null && <button className="secondary-btn" style={{ flex: 1 }} onClick={cancelEditExpense}>취소</button>}
+                    {editingExpenseId !== null && <button className="secondary-btn" style={{ flex: 1 }} onClick={() => { triggerHaptic(); cancelEditExpense(); }}>취소</button>}
                   </div>
                 </div>
                 <input type="text" placeholder="검색..." value={expenseSearch} onChange={(e) => setExpenseSearch(e.target.value)} className="search-bar" style={{ marginTop: '20px' }} />
@@ -574,9 +582,9 @@ function App() {
                   {currentMonthExpenses.length === 0 && <div className="empty-state">기록이 없습니다.</div>}
                   {currentMonthExpenses.filter(e => e.description.includes(expenseSearch)).sort((a, b) => new Date(b.date).getTime() - new Date(a.date).getTime()).map(expense => (
                     <div className="expense-item" key={expense.id} style={{ justifyContent: 'space-between' }}>
-                      <div><div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{expense.date}</div><div>{expense.description}</div></div>
+                      <div><div style={{ fontSize: '0.85rem', color: 'var(--text-secondary)' }}>{expense.date}</div><div style={{ fontWeight: '600' }}>{expense.description}</div></div>
                       <div style={{ display: 'flex', alignItems: 'center', gap: '15px' }}>
-                        <div style={{ fontWeight: 'bold', color: expense.type === 'income' ? '#34a853' : '#ea4335' }}>{expense.type === 'income' ? '+' : '-'}{expense.amount.toLocaleString()}원</div>
+                        <div style={{ fontWeight: '800', color: expense.type === 'income' ? '#34c759' : '#ff3b30' }}>{expense.type === 'income' ? '+' : '-'}{expense.amount.toLocaleString()}원</div>
                         <div className="actions"><button className="edit-button" onClick={() => startEditExpense(expense)}>수정</button><button className="delete-button" onClick={() => deleteExpense(expense.id)}>삭제</button></div>
                       </div>
                     </div>
@@ -584,25 +592,25 @@ function App() {
                 </div>
               </div>
               <div className="expense-sidebar">
-                <div className="expense-summary-panel">
+                <div className="expense-summary-panel glass-panel">
                   <div className="summary-box"><small>{expenseMonth} 총 수입</small><div className="income-text">+{totalIncome.toLocaleString()}원</div></div>
                   <div className="summary-box"><small>{expenseMonth} 총 지출</small><div className="expense-text">-{totalExpense.toLocaleString()}원</div></div>
                   <div className="summary-box"><small>매달 고정 지출</small><div className="expense-text" style={{ color: 'var(--text-secondary)' }}>-{totalSubAmount.toLocaleString()}원</div></div>
                   <hr />
                   <div className="summary-box total"><small>{expenseMonth} 남은 잔액</small><div className={balance >= 0 ? 'income-text' : 'expense-text'}>{balance.toLocaleString()}원</div></div>
                 </div>
-                <div className="expense-summary-panel" style={{ marginTop: '20px', padding: '16px' }}>
-                  <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem' }}>고정 지출 등록</h3>
-                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
-                    <input type="text" placeholder="항목 이름" value={newSubName} onChange={e => setNewSubName(e.target.value)} style={{ padding: '8px' }} />
-                    <input type="text" placeholder="금액" value={newSubAmount} onChange={e => setNewSubAmount(e.target.value)} style={{ padding: '8px' }} />
-                    <input type="number" placeholder="결제일 (1~31)" value={newSubDay} onChange={e => setNewSubDay(e.target.value)} style={{ padding: '8px' }} />
-                    <button className="secondary-btn" onClick={addSubscription} style={{ padding: '8px' }}>추가</button>
+                <div className="expense-summary-panel glass-panel" style={{ marginTop: '20px' }}>
+                  <h3 style={{ margin: '0 0 16px 0', fontSize: '1.1rem', fontWeight: '700' }}>고정 지출 등록</h3>
+                  <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '16px' }}>
+                    <input type="text" placeholder="항목 이름" value={newSubName} onChange={e => setNewSubName(e.target.value)} style={{ padding: '10px', minHeight: '44px' }} />
+                    <input type="text" placeholder="금액" value={newSubAmount} onChange={e => setNewSubAmount(e.target.value)} style={{ padding: '10px', minHeight: '44px' }} />
+                    <input type="number" placeholder="결제일 (1~31)" value={newSubDay} onChange={e => setNewSubDay(e.target.value)} style={{ padding: '10px', minHeight: '44px' }} />
+                    <button className="secondary-btn" onClick={addSubscription} style={{ padding: '10px' }}>추가</button>
                   </div>
                   {subscriptions.map(sub => (
-                    <div key={sub.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.85rem', padding: '8px 0', borderTop: '1px solid var(--border-color)' }}>
+                    <div key={sub.id} style={{ display: 'flex', justifyContent: 'space-between', fontSize: '0.9rem', padding: '10px 0', borderTop: '1px solid rgba(150,150,150,0.2)' }}>
                       <div>매월 {sub.billingDay}일<br/><strong>{sub.name}</strong></div>
-                      <div style={{ textAlign: 'right' }}><div>{sub.amount.toLocaleString()}원</div><button onClick={() => deleteSubscription(sub.id)} style={{ background: 'transparent', border: 'none', color: '#ea4335', cursor: 'pointer', fontSize: '0.8rem', padding: 0 }}>삭제</button></div>
+                      <div style={{ textAlign: 'right', fontWeight: '600' }}><div>{sub.amount.toLocaleString()}원</div><button onClick={() => deleteSubscription(sub.id)} style={{ background: 'transparent', border: 'none', color: '#ff3b30', cursor: 'pointer', fontSize: '0.8rem', padding: 0, marginTop: '4px' }}>삭제</button></div>
                     </div>
                   ))}
                 </div>
@@ -614,12 +622,12 @@ function App() {
         {page === 'memo' && (
           <section className="memo-page">
             <div className="page-title"><span>Myos</span><h1>메모</h1></div>
-            <div className="memo-input" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '15px' }}>
+            <div className="memo-input" style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '15px' }}>
               <input type="text" placeholder="제목" value={newMemoTitle} onChange={(e) => setNewMemoTitle(e.target.value)} />
               <textarea placeholder="내용" value={newMemoContent} onChange={(e) => setNewMemoContent(e.target.value)} rows={4} />
               <div style={{ display: 'flex', gap: '8px' }}>
                 <button className="primary-btn" style={{ flex: 1 }} onClick={editingMemoId === null ? addMemo : updateMemo}>{editingMemoId === null ? '저장' : '수정'}</button>
-                {editingMemoId !== null && <button className="secondary-btn" style={{ flex: 1 }} onClick={cancelEditMemo}>취소</button>}
+                {editingMemoId !== null && <button className="secondary-btn" style={{ flex: 1 }} onClick={() => { triggerHaptic(); cancelEditMemo(); }}>취소</button>}
               </div>
             </div>
             <input type="text" placeholder="검색..." value={memoSearch} onChange={(e) => setMemoSearch(e.target.value)} className="search-bar" />
@@ -627,7 +635,7 @@ function App() {
               {memos.length === 0 && <div className="empty-state">내역이 없습니다.</div>}
               {memos.filter(m => m.title.includes(memoSearch) || m.content.includes(memoSearch)).map(memo => (
                 <div className="memo-item" key={memo.id} style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-                  <h3 style={{ margin: '0 0 8px 0' }}>{memo.title}</h3><p style={{ margin: '0 0 12px 0', whiteSpace: 'pre-wrap' }}>{memo.content}</p>
+                  <h3 style={{ margin: '0 0 8px 0', fontSize: '1.2rem' }}>{memo.title}</h3><p style={{ margin: '0 0 16px 0', whiteSpace: 'pre-wrap', lineHeight: '1.5' }}>{memo.content}</p>
                   <div className="actions"><button className="edit-button" onClick={() => startEditMemo(memo)}>수정</button><button className="delete-button" onClick={() => deleteMemo(memo.id)}>삭제</button></div>
                 </div>
               ))}
@@ -642,12 +650,12 @@ function App() {
               <input type="date" value={newDiaryDate} onChange={(e) => setNewDiaryDate(e.target.value)} className="date-input" />
               <textarea placeholder="기록할 내용" value={newDiaryContent} onChange={(e) => setNewDiaryContent(e.target.value)} rows={5} />
               <div className="photo-upload-section">
-                <label className="photo-upload-btn">사진 첨부<input type="file" accept="image/*" onChange={handlePhotoUpload} ref={fileInputRef} style={{ display: 'none' }} /></label>
-                {newDiaryPhoto && (<div className="photo-preview"><img src={newDiaryPhoto} alt="미리보기" /><button className="remove-photo" onClick={removePhoto}>✕</button></div>)}
+                <label className="photo-upload-btn">사진 첨부<input type="file" accept="image/*" onChange={(e) => { triggerHaptic(); handlePhotoUpload(e); }} ref={fileInputRef} style={{ display: 'none' }} /></label>
+                {newDiaryPhoto && (<div className="photo-preview"><img src={newDiaryPhoto} alt="미리보기" /><button className="remove-photo" onClick={() => { triggerHaptic(); removePhoto(); }}>✕</button></div>)}
               </div>
               <div className="diary-actions">
                 <button className="primary-btn" onClick={editingDiaryId === null ? addDiary : updateDiary}>{editingDiaryId === null ? '저장' : '수정'}</button>
-                {editingDiaryId !== null && <button onClick={cancelEditDiary} className="secondary-btn">취소</button>}
+                {editingDiaryId !== null && <button onClick={() => { triggerHaptic(); cancelEditDiary(); }} className="secondary-btn">취소</button>}
               </div>
             </div>
             <div className="diary-list">
@@ -658,7 +666,7 @@ function App() {
                     <h3>{diary.date}</h3>
                     <div className="actions"><button className="edit-button" onClick={() => startEditDiary(diary)}>수정</button><button className="delete-button" onClick={() => deleteDiary(diary.id)}>삭제</button></div>
                   </div>
-                  <p className="diary-content" style={{ marginTop: '10px' }}>{diary.content}</p>
+                  <p className="diary-content" style={{ marginTop: '16px' }}>{diary.content}</p>
                   {diary.photo && <img src={diary.photo} alt="사진" className="diary-saved-photo" />}
                 </div>
               ))}
@@ -669,10 +677,10 @@ function App() {
         {page === 'backup' && (
           <section className="backup-page">
             <div className="page-title"><span>Myos</span><h1>데이터 관리</h1></div>
-            <div className="home-backup-panel">
-              <div><h3 style={{ margin: '0 0 6px 0', fontSize: '1.1rem' }}>데이터 백업</h3><button onClick={exportData} className="primary-btn">파일 다운로드 (.json)</button></div>
-              <hr style={{ border: '0', height: '1px', backgroundColor: 'var(--border-color)', margin: '0' }} />
-              <div><h3 style={{ margin: '0 0 6px 0', fontSize: '1.1rem' }}>데이터 복구</h3><label className="secondary-btn">파일 불러오기<input type="file" accept=".json" onChange={importData} style={{ display: 'none' }} /></label></div>
+            <div className="home-backup-panel glass-panel">
+              <div><h3 style={{ margin: '0 0 10px 0', fontSize: '1.2rem', fontWeight: '700' }}>데이터 백업</h3><button onClick={exportData} className="primary-btn">파일 다운로드 (.json)</button></div>
+              <hr style={{ border: '0', height: '1px', backgroundColor: 'rgba(150,150,150,0.2)', margin: '0' }} />
+              <div><h3 style={{ margin: '0 0 10px 0', fontSize: '1.2rem', fontWeight: '700' }}>데이터 복구</h3><label className="secondary-btn" onClick={triggerHaptic}>파일 불러오기<input type="file" accept=".json" onChange={importData} style={{ display: 'none' }} /></label></div>
             </div>
           </section>
         )}
@@ -681,13 +689,13 @@ function App() {
           <section className="today-page">
             <div className="today-header"><span>Myos</span><h1>오늘</h1><p>{getTodayDisplayKST()}</p></div>
             <div className="today-section">
-              <div className="section-header"><h2>작업 목록</h2></div>
+              <div className="section-header"><h2 style={{ fontSize: '1.4rem', fontWeight: '700', marginBottom: '16px' }}>작업 목록</h2></div>
               {todos.filter(t => t.date === getTodayKST()).length === 0 && <div className="empty-state">예정된 작업이 없습니다.</div>}
               {todos.filter(t => t.date === getTodayKST()).map(todo => (
-                <div className="today-todo" key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: '12px', padding: '14px', background: 'var(--glass-bg)', borderRadius: '12px', marginBottom: '8px', border: '1px solid var(--glass-border)' }}>
-                  <button onClick={() => toggleTodo(todo.id)} style={{ background: 'transparent', border: 'none', cursor: 'pointer', fontSize: '18px' }}>{todo.completed ? '✓' : '○'}</button>
-                  <span style={{ textDecoration: todo.completed ? 'line-through' : 'none', color: todo.completed ? 'var(--text-secondary)' : 'var(--text-primary)' }}>
-                    {todo.time && <strong style={{ marginRight: '8px' }}>{todo.time}</strong>}{todo.text}
+                <div className="today-todo glass-panel" key={todo.id} style={{ display: 'flex', alignItems: 'center', gap: '16px', padding: '16px 20px', marginBottom: '12px' }}>
+                  <button onClick={() => toggleTodo(todo.id)} style={{ width: '28px', height: '28px', border: '2px solid rgba(150,150,150,0.5)', borderRadius: '50%', background: todo.completed ? 'var(--primary-color)' : 'transparent', color: todo.completed ? '#fff' : 'transparent', cursor: 'pointer', display: 'flex', justifyContent: 'center', alignItems: 'center', fontSize: '14px', transition: 'all 0.2s' }}>{todo.completed ? '✓' : ''}</button>
+                  <span style={{ fontSize: '1.05rem', fontWeight: '600', textDecoration: todo.completed ? 'line-through' : 'none', color: todo.completed ? 'var(--text-secondary)' : 'var(--text-primary)' }}>
+                    {todo.time && <strong style={{ marginRight: '10px' }}>{todo.time}</strong>}{todo.text}
                   </span>
                 </div>
               ))}

@@ -228,8 +228,12 @@ input:checked + .slider:before { transform: translateX(20px); }
 .page-title h1, .today-header h1 { margin: 0; font-size: 36px; font-weight: 400; letter-spacing: -1px; color: var(--text-primary); }
 .page-title p { margin: 8px 0 0; color: var(--text-secondary); font-size: 14px; }
 
+/* 🌟 모바일에서 시간 박스가 휑하게 비어 보이지 않도록 강제 스타일 고정 */
 input[type="text"], input[type="date"], input[type="time"], select, textarea {
   width: 100%; border: 1px solid var(--border-color); border-radius: 12px; background: var(--card-bg); color: var(--text-primary); padding: 14px; outline: none; transition: border-color 0.2s ease;
+  min-height: 50px;
+  -webkit-appearance: none;
+  appearance: none;
 }
 input[type="text"]:focus, textarea:focus { border-color: var(--primary-color); box-shadow: 0 0 0 3px rgba(26, 115, 232, 0.15); }
 .search-bar { width: 100%; margin: 0 0 20px; }
@@ -296,16 +300,15 @@ input[type="text"]:focus, textarea:focus { border-color: var(--primary-color); b
   -webkit-backdrop-filter: blur(12px);
   border: 1px solid var(--glass-border); 
   border-radius: 12px; 
-  height: 110px;        /* 강제 고정 크기 */
-  min-height: 110px;    /* 찌그러짐 방지 */
+  height: 110px;        
+  min-height: 110px;    
   padding: 8px; 
   display: flex; 
   flex-direction: column; 
   box-shadow: 0 4px 16px rgba(0,0,0,0.02);
-  overflow-y: auto;     /* 내용이 넘치면 스크롤 생성 */
+  overflow-y: auto;     
 }
 
-/* 캘린더 안쪽 예쁜 스크롤바 */
 .calendar-cell::-webkit-scrollbar { width: 4px; }
 .calendar-cell::-webkit-scrollbar-thumb { background-color: var(--border-color); border-radius: 4px; }
 
@@ -377,26 +380,4 @@ input[type="text"]:focus, textarea:focus { border-color: var(--primary-color); b
   .todo-page, .schedule-page, .memo-page, .expense-page, .backup-page, .calendar-page, .diary-page { width: calc(100% - 32px); padding-top: 30px; }
   .calendar-cell { min-height: 70px; padding: 4px; }
   .badge { font-size: 9px; padding: 2px 4px; }
-}
-
-/* 할 일 및 일정 입력창을 한 줄에 하나씩 세로로 배치 */
-.todo-input, .schedule-input {
-  display: flex;
-  flex-direction: column;
-  gap: 10px;
-  margin-bottom: 15px;
-}
-
-/* 등록된 아이템 리스트 칸들도 세로로 넓직하게 배치 */
-.todo-item, .schedule-item {
-  display: flex;
-  flex-direction: column;
-  align-items: flex-start;
-  gap: 8px;
-  padding: 16px;
-}
-
-.todo-item .actions, .schedule-item .actions {
-  align-self: flex-end;
-  margin-top: -8px;
 }

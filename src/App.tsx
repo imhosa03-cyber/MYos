@@ -27,7 +27,7 @@ type Todo = {
   id: number
   text: string
   date: string
-  time: string // 🕒 할 일 시간 추가
+  time: string
   priority: TodoPriority
   completed: boolean
 }
@@ -63,12 +63,11 @@ type Diary = {
   photo: string | null
 }
 
-// 🔄 구독료(고정 지출) 타입 추가
 type Subscription = {
   id: number
   name: string
   amount: number
-  billingDay: number // 매월 결제일 (1~31)
+  billingDay: number
 }
 
 const priorityOrder: Record<TodoPriority, number> = {
@@ -124,13 +123,13 @@ function App() {
         ...todo, 
         date: todo.date ?? getTodayKST(), 
         priority: todo.priority ?? 'normal',
-        time: todo.time ?? '' // 이전 데이터 호환성
+        time: todo.time ?? ''
       }))
     } catch { return [] }
   })
   const [newTodo, setNewTodo] = useState('')
   const [newTodoDate, setNewTodoDate] = useState(getTodayKST())
-  const [newTodoTime, setNewTodoTime] = useState('') // 🕒 할 일 시간 상태
+  const [newTodoTime, setNewTodoTime] = useState('')
   const [newTodoPriority, setNewTodoPriority] = useState<TodoPriority>('normal')
   const [editingTodoId, setEditingTodoId] = useState<number | null>(null)
   const [todoSearch, setTodoSearch] = useState('')
@@ -166,7 +165,6 @@ function App() {
   
   const [expenseMonth, setExpenseMonth] = useState(getTodayKST().slice(0, 7))
 
-  // 🔄 구독료 상태 관리
   const [subscriptions, setSubscriptions] = useState<Subscription[]>(() => {
     const saved = localStorage.getItem('myos-subscriptions')
     return saved ? JSON.parse(saved) : []
@@ -281,7 +279,6 @@ function App() {
   const getDaysInMonth = (year: number, month: number) => new Date(year, month + 1, 0).getDate()
   const getFirstDayOfMonth = (year: number, month: number) => new Date(year, month, 1).getDay()
 
-  // 🛠️ TypeScript 에러 해결: (number | null)[] 명시적 선언
   const generateCalendarDays = (): (number | null)[] => {
     const totalDays = getDaysInMonth(calYear, calMonth)
     const firstDay = getFirstDayOfMonth(calYear, calMonth)
@@ -363,7 +360,6 @@ function App() {
   }
   const deleteExpense = (id: number) => { setExpenses((current) => current.filter((expense) => expense.id !== id)) }
 
-  // 🔄 구독료 핸들러
   const addSubscription = () => {
     const amount = Number(newSubAmount.replace(/[^0-9]/g, ''))
     const day = Number(newSubDay)
@@ -381,7 +377,6 @@ function App() {
     setExpenseMonth(`${y}-${m}`)
   }
 
-  // 지출/결산 계산 (구독료 포함)
   const currentMonthExpenses = expenses.filter(e => e.date && e.date.startsWith(expenseMonth))
   const totalIncome = currentMonthExpenses.filter((e) => e.type === 'income').reduce((sum, e) => sum + e.amount, 0)
   const totalExpense = currentMonthExpenses.filter((e) => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0)
@@ -449,7 +444,6 @@ function App() {
           <button className="profile-button">○</button>
         </header>
 
-        {/* 홈 화면 */}
         {page === 'home' && (
           <>
             <section className="welcome">
@@ -482,14 +476,12 @@ function App() {
           </>
         )}
 
-        {/* 캘린더 */}
         {page === 'calendar' && (
           <section className="calendar-page">
             <div className="page-title">
               <span>Myos</span><h1>캘린더</h1><p>이번 달의 모든 기록을 확인하세요.</p>
             </div>
             
-            {/* 📊 캘린더 월별 요약 (수입, 지출, 고정 지출) */}
             <div className="calendar-summary-panel">
               <div className="cal-sum-item">
                 <small>수입</small>
@@ -524,7 +516,7 @@ function App() {
                 const dayTodos = todos.filter(t => t.date === currentDate)
                 const dayDiaries = diaries.filter(d => d.date === currentDate)
                 const dayExpenses = expenses.filter(e => e.date === currentDate)
-                const daySubs = subscriptions.filter(s => s.billingDay === day) // 구독료 표시
+                const daySubs = subscriptions.filter(s => s.billingDay === day)
                 
                 const dailyIncome = dayExpenses.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0)
                 const dailyOut = dayExpenses.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0) + daySubs.reduce((sum, s) => sum + s.amount, 0)
@@ -553,41 +545,49 @@ function App() {
           </section>
         )}
 
-        {/* 할 일 (시간 추가) */}
+        {/* 🕒 할 일 (세로로 배치 수정 완료) */}
         {page === 'todos' && (
           <section className="todo-page">
             <div className="page-title"><span>Myos</span><h1>할 일</h1></div>
-            <div className="todo-input">
+            
+            <div className="todo-input" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px' }}>
               <input type="text" placeholder="할 일 입력" value={newTodo} onChange={(e) => setNewTodo(e.target.value)} />
-              <input type="date" value={newTodoDate} onChange={(e) => setNewTodoDate(e.target.value)} style={{ flex: 1.2 }} />
-              <input type="time" value={newTodoTime} onChange={(e) => setNewTodoTime(e.target.value)} style={{ flex: 0.8 }} />
-              <select value={newTodoPriority} onChange={(e) => setNewTodoPriority(e.target.value as TodoPriority)}>
-                <option value="high">높음</option>
-                <option value="normal">보통</option>
-                <option value="low">낮음</option>
-              </select>
+              <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
+                <input type="date" value={newTodoDate} onChange={(e) => setNewTodoDate(e.target.value)} style={{ flex: 1.5 }} />
+                <input type="time" value={newTodoTime} onChange={(e) => setNewTodoTime(e.target.value)} style={{ flex: 1 }} />
+                <select value={newTodoPriority} onChange={(e) => setNewTodoPriority(e.target.value as TodoPriority)} style={{ flex: 1 }}>
+                  <option value="high">높음</option>
+                  <option value="normal">보통</option>
+                  <option value="low">낮음</option>
+                </select>
+              </div>
             </div>
+
             <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
               <button className="primary-btn" style={{ flex: 1 }} onClick={editingTodoId === null ? addTodo : updateTodo}>
                 {editingTodoId === null ? '추가' : '저장'}
               </button>
               {editingTodoId !== null && <button className="secondary-btn" style={{ flex: 1 }} onClick={cancelEditTodo}>취소</button>}
             </div>
+
             <input type="text" placeholder="할 일 검색..." value={todoSearch} onChange={(e) => setTodoSearch(e.target.value)} className="search-bar" />
+            
             <div className="todo-list">
               {todos.length === 0 && (
                 <div className="empty-state">등록된 할 일이 없어요. 새로운 할 일을 추가해보세요!</div>
               )}
               {sortTodos(todos).filter(t => t.text.includes(todoSearch)).map((todo) => (
-                <div className={`todo-item ${todo.completed ? 'completed' : ''}`} key={todo.id}>
-                  <button className="check-button" onClick={() => toggleTodo(todo.id)}>{todo.completed ? '✓' : ''}</button>
-                  <div style={{ flex: 1, display: 'flex', flexDirection: 'column' }}>
-                    <span>{todo.text}</span>
-                    <small style={{ color: 'var(--text-secondary)', fontSize: '0.8rem', marginTop: '2px' }}>{todo.date} {todo.time}</small>
+                <div className={`todo-item ${todo.completed ? 'completed' : ''}`} key={todo.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px', width: '100%' }}>
+                  <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
+                    <button className="check-button" onClick={() => toggleTodo(todo.id)}>{todo.completed ? '✓' : ''}</button>
+                    <span style={{ fontSize: '1.05rem', fontWeight: '500', wordBreak: 'break-all', flex: 1 }}>{todo.text}</span>
                   </div>
-                  <div className="actions">
-                    <button className="edit-button" onClick={() => startEditTodo(todo)}>수정</button>
-                    <button className="delete-button" onClick={() => deleteTodo(todo.id)}>삭제</button>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center', paddingLeft: '34px' }}>
+                    <small style={{ color: 'var(--text-secondary)' }}>📅 {todo.date} {todo.time && `⏰ ${todo.time}`}</small>
+                    <div className="actions">
+                      <button className="edit-button" onClick={() => startEditTodo(todo)}>수정</button>
+                      <button className="delete-button" onClick={() => deleteTodo(todo.id)}>삭제</button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -595,34 +595,37 @@ function App() {
           </section>
         )}
 
-        {/* 일정 (수정 없음) */}
+        {/* 🕒 일정 (세로로 배치 수정 완료) */}
         {page === 'schedule' && (
           <section className="schedule-page">
             <div className="page-title"><span>Myos</span><h1>일정</h1></div>
-            <div className="schedule-input">
+            
+            <div className="schedule-input" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '15px' }}>
               <input type="text" placeholder="일정 제목" value={newScheduleTitle} onChange={(e) => setNewScheduleTitle(e.target.value)} />
-              <div className="schedule-row" style={{ display: 'flex', gap: '8px', marginTop: '8px' }}>
-                <input type="date" value={newScheduleDate} onChange={(e) => setNewScheduleDate(e.target.value)} style={{ flex: 1 }} />
+              <div style={{ display: 'flex', gap: '8px' }}>
+                <input type="date" value={newScheduleDate} onChange={(e) => setNewScheduleDate(e.target.value)} style={{ flex: 1.5 }} />
                 <input type="time" value={newScheduleTime} onChange={(e) => setNewScheduleTime(e.target.value)} style={{ flex: 1 }} />
               </div>
             </div>
-            <div style={{ display: 'flex', gap: '8px', margin: '15px 0 20px 0' }}>
+
+            <div style={{ display: 'flex', gap: '8px', marginBottom: '20px' }}>
               <button className="primary-btn" style={{ flex: 1 }} onClick={editingScheduleId === null ? addSchedule : updateSchedule}>
                 {editingScheduleId === null ? '추가' : '수정'}
               </button>
+              {editingScheduleId !== null && <button className="secondary-btn" style={{ flex: 1 }} onClick={() => setEditingScheduleId(null)}>취소</button>}
             </div>
+
             <div className="schedule-list">
               {schedules.length === 0 && <div className="empty-state">등록된 일정이 없어요. 중요한 약속을 추가해보세요!</div>}
               {schedules.map((schedule) => (
-                <div className="schedule-item" key={schedule.id}>
-                  <div className="schedule-time" style={{ display: 'flex', flexDirection: 'column', width: '100px' }}>
-                    <span style={{ fontSize: '0.8rem', color: 'var(--text-secondary)' }}>{schedule.date}</span>
-                    <strong style={{ fontSize: '1.1rem' }}>{schedule.time}</strong>
-                  </div>
-                  <div className="schedule-info" style={{ flex: 1 }}><span>{schedule.title}</span></div>
-                  <div className="actions">
-                    <button className="edit-button" onClick={() => startEditSchedule(schedule)}>수정</button>
-                    <button className="delete-button" onClick={() => deleteSchedule(schedule.id)}>삭제</button>
+                <div className="schedule-item" key={schedule.id} style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-start', gap: '8px', width: '100%' }}>
+                  <div style={{ fontSize: '1.1rem', fontWeight: 'bold' }}>{schedule.title}</div>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', width: '100%', alignItems: 'center' }}>
+                    <small style={{ color: 'var(--text-secondary)' }}>📅 {schedule.date} ⏰ {schedule.time}</small>
+                    <div className="actions">
+                      <button className="edit-button" onClick={() => startEditSchedule(schedule)}>수정</button>
+                      <button className="delete-button" onClick={() => deleteSchedule(schedule.id)}>삭제</button>
+                    </div>
                   </div>
                 </div>
               ))}
@@ -630,7 +633,6 @@ function App() {
           </section>
         )}
 
-        {/* 지출 (구독료 포함 및 정렬) */}
         {page === 'expense' && (
           <section className="expense-page">
             <div className="page-title"><span>Myos</span><h1>지출</h1></div>
@@ -663,7 +665,6 @@ function App() {
                 
                 <input type="text" placeholder="지출 검색..." value={expenseSearch} onChange={(e) => setExpenseSearch(e.target.value)} className="search-bar" style={{ marginTop: '20px' }} />
                 
-                {/* 내역 날짜순 정렬 (.sort) */}
                 <div className="expense-list">
                   {currentMonthExpenses.length === 0 && <div className="empty-state">해당 월에 기록된 지출/수입 내역이 없어요.</div>}
                   {currentMonthExpenses
@@ -712,7 +713,6 @@ function App() {
                   </div>
                 </div>
 
-                {/* 고정 지출 관리 영역 추가 */}
                 <div className="expense-summary-panel" style={{ marginTop: '20px', padding: '16px' }}>
                   <h3 style={{ margin: '0 0 12px 0', fontSize: '1rem' }}>🔄 고정 지출 등록</h3>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '12px' }}>
@@ -736,7 +736,6 @@ function App() {
           </section>
         )}
 
-        {/* 메모, 일기, 데이터 관리, 오늘은 수정 없이 기존 유지 */}
         {page === 'memo' && (
           <section className="memo-page">
             <div className="page-title"><span>Myos</span><h1>메모</h1></div>

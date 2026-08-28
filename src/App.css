@@ -378,3 +378,25 @@ input[type="text"]:focus, textarea:focus { border-color: var(--primary-color); b
   .calendar-cell { min-height: 70px; padding: 4px; }
   .badge { font-size: 9px; padding: 2px 4px; }
 }
+
+/* 할 일 및 일정 입력창을 한 줄에 하나씩 세로로 배치 */
+.todo-input, .schedule-input {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  margin-bottom: 15px;
+}
+
+/* 등록된 아이템 리스트 칸들도 세로로 넓직하게 배치 */
+.todo-item, .schedule-item {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 8px;
+  padding: 16px;
+}
+
+.todo-item .actions, .schedule-item .actions {
+  align-self: flex-end;
+  margin-top: -8px;
+}

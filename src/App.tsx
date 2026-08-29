@@ -56,6 +56,9 @@ function App() {
 
   const [showMenu, setShowMenu] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
+  
+  const [showHelp, setShowHelp] = useState(false)
+  const [selectedCalDate, setSelectedCalDate] = useState<string | null>(null)
 
   const [isDarkMode, setIsDarkMode] = useState<boolean>(() => {
     const saved = localStorage.getItem('myos-dark-mode')
@@ -298,6 +301,69 @@ function App() {
         </div>
       )}
 
+      {selectedCalDate && (
+        <div className="modal-overlay" onClick={() => { triggerHaptic(); setSelectedCalDate(null); }}>
+          <div className="modal-content glass-panel" onClick={e => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => { triggerHaptic(); setSelectedCalDate(null); }}>✕</button>
+            <h2 style={{marginTop:0, marginBottom:'24px', fontSize:'1.4rem', fontWeight:'800', letterSpacing:'-0.5px'}}>
+              {selectedCalDate} 상세 내역
+            </h2>
+            <div style={{display:'flex', flexDirection:'column', gap:'16px'}}>
+              {(() => {
+                const day = parseInt(selectedCalDate.split('-')[2])
+                const daySchedules = schedules.filter(s => s.date === selectedCalDate)
+                const dayTodos = todos.filter(t => t.date === selectedCalDate)
+                const dayExpenses = expenses.filter(e => e.date === selectedCalDate)
+                const dayDiaries = diaries.filter(d => d.date === selectedCalDate)
+                const daySubs = subscriptions.filter(s => s.billingDay === day)
+                
+                if (daySchedules.length === 0 && dayTodos.length === 0 && dayExpenses.length === 0 && dayDiaries.length === 0 && daySubs.length === 0) {
+                  return <div className="empty-state" style={{padding:'20px'}}>기록된 내역이 없습니다.</div>
+                }
+
+                return (
+                  <>
+                    {daySchedules.length > 0 && <div><h3 style={{fontSize:'1rem', color:'var(--primary-color)', marginBottom:'8px'}}>📅 일정</h3>{daySchedules.map(s => <div key={s.id} style={{padding:'8px 12px', background:'rgba(150,150,150,0.1)', borderRadius:'12px', marginBottom:'4px'}}><strong>{s.time}</strong> {s.title}</div>)}</div>}
+                    {dayTodos.length > 0 && <div><h3 style={{fontSize:'1rem', color:'#ff3b30', marginBottom:'8px'}}>☑️ 할 일</h3>{dayTodos.map(t => <div key={t.id} style={{padding:'8px 12px', background:'rgba(150,150,150,0.1)', borderRadius:'12px', marginBottom:'4px', textDecoration: t.completed?'line-through':'none', color: t.completed?'var(--text-secondary)':'inherit'}}>{t.text}</div>)}</div>}
+                    {dayExpenses.length > 0 && <div><h3 style={{fontSize:'1rem', color:'#34c759', marginBottom:'8px'}}>💰 수입/지출</h3>{dayExpenses.map(e => <div key={e.id} style={{padding:'8px 12px', background:'rgba(150,150,150,0.1)', borderRadius:'12px', marginBottom:'4px', display:'flex', justifyContent:'space-between'}}><span>{e.description}</span><strong style={{color: e.type==='income'?'#34c759':'#ff3b30'}}>{e.type==='income'?'+':'-'}{e.amount.toLocaleString()}원</strong></div>)}</div>}
+                    {daySubs.length > 0 && <div><h3 style={{fontSize:'1rem', color:'var(--text-secondary)', marginBottom:'8px'}}>💳 고정 결제</h3>{daySubs.map(s => <div key={s.id} style={{padding:'8px 12px', background:'rgba(150,150,150,0.1)', borderRadius:'12px', marginBottom:'4px', display:'flex', justifyContent:'space-between'}}><span>{s.name}</span><strong>-{s.amount.toLocaleString()}원</strong></div>)}</div>}
+                    {dayDiaries.length > 0 && <div><h3 style={{fontSize:'1rem', color:'#ff9500', marginBottom:'8px'}}>📝 일기</h3>{dayDiaries.map(d => <div key={d.id} style={{padding:'8px 12px', background:'rgba(150,150,150,0.1)', borderRadius:'12px', marginBottom:'4px', whiteSpace:'pre-wrap'}}>{d.content}</div>)}</div>}
+                  </>
+                )
+              })()}
+            </div>
+          </div>
+        </div>
+      )}
+
+      {showHelp && (
+        <div className="modal-overlay" onClick={() => { triggerHaptic(); setShowHelp(false); }}>
+          <div className="modal-content glass-panel" onClick={e => e.stopPropagation()}>
+            <button className="modal-close" onClick={() => { triggerHaptic(); setShowHelp(false); }}>✕</button>
+            <h2 style={{marginTop:0, marginBottom:'24px', fontSize:'1.4rem', fontWeight:'800', display:'flex', alignItems:'center', gap:'8px'}}>
+              <svg width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="var(--primary-color)" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+              MYos 도움말
+            </h2>
+            <div style={{display:'flex', flexDirection:'column', gap:'20px', color:'var(--text-primary)'}}>
+              <div style={{background:'rgba(150,150,150,0.1)', padding:'16px', borderRadius:'16px'}}>
+                <h3 style={{margin:'0 0 8px 0', fontSize:'1.05rem', display:'flex', alignItems:'center', gap:'6px'}}>☑️ 할 일 vs 오늘 vs 일정</h3>
+                <p style={{margin:0, fontSize:'0.9rem', lineHeight:'1.5', color:'var(--text-secondary)'}}>
+                  <strong>할 일:</strong> 언젠가 완료하고 체크(✓)해야 하는 모든 작업의 리스트업 창고입니다.<br/>
+                  <strong>일정:</strong> 특정 시간, 장소가 정해진 이벤트(시험, 미팅 등)를 캘린더에 표시합니다.<br/>
+                  <strong>오늘:</strong> 할 일 목록 중 '딱 오늘 하루 집중해서 끝낼 작업'만 모아보는 대시보드입니다.
+                </p>
+              </div>
+              <div><strong style={{display:'block', marginBottom:'4px'}}>🚀 퀵 런처</strong><span style={{fontSize:'0.9rem', color:'var(--text-secondary)'}}>자주 가는 웹사이트(학교 포털, 프로그래머스 등) 링크를 등록하여 원클릭으로 접속하세요.</span></div>
+              <div><strong style={{display:'block', marginBottom:'4px'}}>⏱️ Pomodoro Timer</strong><span style={{fontSize:'0.9rem', color:'var(--text-secondary)'}}>집중 시간과 휴식 시간을 설정하고 루틴을 관리합니다. 공부나 코딩할 때 유용합니다.</span></div>
+              <div><strong style={{display:'block', marginBottom:'4px'}}>💰 지출</strong><span style={{fontSize:'0.9rem', color:'var(--text-secondary)'}}>수입/지출을 기록하고 월별로 확인합니다. 우측에 매월 나가는 구독료(고정 지출)도 등록할 수 있습니다.</span></div>
+              <div><strong style={{display:'block', marginBottom:'4px'}}>💾 데이터 관리</strong><span style={{fontSize:'0.9rem', color:'var(--text-secondary)'}}>현재 저장된 모든 데이터를 `.json` 파일로 기기에 백업하고, 다른 기기에서 복구할 수 있습니다.</span></div>
+              <div><strong style={{display:'block', marginBottom:'4px'}}>🔒 설정 (잠금)</strong><span style={{fontSize:'0.9rem', color:'var(--text-secondary)'}}>4자리 PIN 번호를 설정하면, 앱을 열 때마다 비밀번호를 요구하여 사생활을 보호합니다.</span></div>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* 🌟 사이드 메뉴에 도움말 버튼 추가 완료 */}
       <aside className={`side-menu ${showMenu ? 'open' : ''}`}>
         <div className="menu-header"><span>Myos</span><button onClick={() => setShowMenu(false)}>✕</button></div>
         <nav>
@@ -311,6 +377,11 @@ function App() {
           <button onClick={() => navigateTo('memo')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 20h9"/><path d="M16.5 3.5a2.121 2.121 0 0 1 3 3L7 19l-4 1 1-4L16.5 3.5z"/></svg> <span>메모</span></button>
           <button onClick={() => navigateTo('diary')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M4 19.5A2.5 2.5 0 0 1 6.5 17H20"/><path d="M6.5 2H20v20H6.5A2.5 2.5 0 0 1 4 19.5v-15A2.5 2.5 0 0 1 6.5 2z"/></svg> <span>일기</span></button>
           <button onClick={() => navigateTo('expense')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="2" y="5" width="20" height="14" rx="2" ry="2"/><line x1="2" y1="10" x2="22" y2="10"/></svg> <span>지출</span></button>
+          
+          <button onClick={() => { triggerHaptic(); setShowMenu(false); setShowHelp(true); }}>
+            <svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" y1="17" x2="12.01" y2="17"/></svg>
+            <span>도움말</span>
+          </button>
           <button onClick={() => navigateTo('backup')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg> <span>데이터 관리</span></button>
         </nav>
         <div style={{ marginTop: '12px', padding: '0 4px' }}><button onClick={requestNotification} className="secondary-btn" style={{ width: '100%', fontSize: '13px' }}>알림 권한 설정</button></div>
@@ -324,7 +395,7 @@ function App() {
       {showMenu && <div className="overlay" onClick={() => setShowMenu(false)} />}
 
       <main className="home">
-        {/* 상단 고정 헤더 */}
+        {/* 상단 헤더 원래대로 롤백 (깔끔하게) */}
         <header>
           <button className="menu-button" onClick={() => { triggerHaptic(); setShowMenu(true); }}>☰</button>
           <div className="logo" onClick={() => navigateTo('home')} style={{ cursor: 'pointer' }}>Myos</div>
@@ -477,7 +548,7 @@ function App() {
                 const dailyOut = dayExpenses.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0) + daySubs.reduce((sum, s) => sum + s.amount, 0)
                 const dailyNet = dailyIncome - dailyOut
                 return (
-                  <div key={day} className={`calendar-cell ${currentDate === getTodayKST() ? 'today' : ''}`}>
+                  <div key={day} className={`calendar-cell ${currentDate === getTodayKST() ? 'today' : ''}`} onClick={() => { triggerHaptic(); setSelectedCalDate(currentDate); }} style={{ cursor: 'pointer' }}>
                     <span className="day-number">{day}</span>
                     <div className="cell-content">
                       {daySubs.map(s => <div key={s.id} className="badge sub">결제: {s.name}</div>)}

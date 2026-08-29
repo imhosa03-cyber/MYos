@@ -76,25 +76,15 @@ button, input, select, textarea { font: inherit; }
 
 .home { min-height: 100vh; position: relative; }
 
-/* 🌟 상단 고정(Fixed) 글래스모피즘 헤더 */
+/* 🌟 상단 고정 헤더 - 프로필만 남기고 아주 깔끔하게 복구 */
 header {
-  position: fixed;
-  top: 0;
-  left: 0;
-  height: 80px;
-  width: 100%;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  padding: 0 40px;
-  z-index: 12;
-  background: var(--glass-bg);
-  backdrop-filter: blur(30px) saturate(180%);
-  -webkit-backdrop-filter: blur(30px) saturate(180%);
-  border-bottom: 1px solid var(--glass-border);
+  position: fixed; top: 0; left: 0; height: 80px; width: 100%; display: flex; align-items: center; justify-content: space-between; padding: 0 40px; z-index: 12;
+  background: var(--glass-bg); backdrop-filter: blur(30px) saturate(180%); -webkit-backdrop-filter: blur(30px) saturate(180%); border-bottom: 1px solid var(--glass-border);
 }
 .logo { position: absolute; left: 50%; transform: translateX(-50%); font-size: 20px; font-weight: 700; letter-spacing: -0.5px; color: var(--text-primary); }
-.menu-button, .profile-button { width: 44px; height: 44px; border: none; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); color: var(--text-primary); font-size: 18px; cursor: pointer; border-radius: 50%; border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); transition: all 0.2s ease; }
+.menu-button, .profile-button { 
+  width: 44px; height: 44px; border: none; background: rgba(255,255,255,0.2); backdrop-filter: blur(10px); color: var(--text-primary); font-size: 18px; cursor: pointer; border-radius: 50%; border: 1px solid var(--glass-border); box-shadow: var(--glass-shadow); transition: all 0.2s ease; display: flex; justify-content: center; align-items: center;
+}
 .app.dark .menu-button, .app.dark .profile-button { background: rgba(0,0,0,0.2); }
 .menu-button:hover, .profile-button:hover { transform: scale(1.05); background: var(--primary-color); color: #fff; border-color: var(--primary-color); }
 
@@ -128,6 +118,36 @@ header {
 .app.dark .secondary-btn:hover { background: rgba(255, 255, 255, 0.15); }
 
 .empty-state { text-align: center; padding: 60px 20px; color: var(--text-secondary); font-size: 15px; font-weight: 500; border-radius: var(--card-radius); margin-top: 10px; }
+
+/* 🌟 모달 팝업 공통 스타일 */
+.modal-overlay {
+  position: fixed; inset: 0; z-index: 1000;
+  background: rgba(0, 0, 0, 0.4); backdrop-filter: blur(8px); -webkit-backdrop-filter: blur(8px);
+  display: flex; justify-content: center; align-items: center; padding: 20px;
+  opacity: 0; animation: fadeIn 0.2s ease forwards;
+}
+@keyframes fadeIn { to { opacity: 1; } }
+
+.modal-content {
+  width: 100%; max-width: 480px; max-height: 85vh; overflow-y: auto;
+  padding: 32px; position: relative;
+  transform: translateY(20px) scale(0.95);
+  animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1) forwards;
+}
+@keyframes modalSlideUp { to { transform: translateY(0) scale(1); } }
+
+.modal-close {
+  position: absolute; top: 20px; right: 20px;
+  width: 36px; height: 36px; border-radius: 50%;
+  background: rgba(150,150,150,0.2); border: none;
+  font-size: 16px; color: var(--text-primary); cursor: pointer; transition: all 0.2s;
+  display: flex; justify-content: center; align-items: center;
+}
+.modal-close:hover { background: rgba(150,150,150,0.4); transform: scale(1.05); }
+
+/* 스크롤바 디자인 (모달용) */
+.modal-content::-webkit-scrollbar { width: 6px; }
+.modal-content::-webkit-scrollbar-thumb { background-color: rgba(150,150,150,0.3); border-radius: 6px; }
 
 .side-menu { position: fixed; z-index: 20; top: 0; left: 0; width: 300px; height: 100vh; padding: 32px 24px; background: var(--glass-bg); backdrop-filter: blur(50px) saturate(200%); -webkit-backdrop-filter: blur(50px) saturate(200%); border-right: 1px solid var(--glass-border-light); box-shadow: 30px 0 60px rgba(0, 0, 0, 0.15); transform: translateX(-100%); transition: transform 0.4s cubic-bezier(0.16, 1, 0.3, 1); display: flex; flex-direction: column; }
 .side-menu.open { transform: translateX(0); }
@@ -164,10 +184,7 @@ input:checked + .slider:before { transform: translateX(22px); }
 .add-menu button:hover { background: rgba(255,255,255,0.5); }
 .app.dark .add-menu button:hover { background: rgba(255,255,255,0.1); }
 
-/* 🌟 고정 헤더에 맞춰 각 페이지 상단 패딩을 110px로 확장 */
-.todo-page, .today-page, .schedule-page, .memo-page, .expense-page, .backup-page, .calendar-page, .diary-page, .launcher-page, .timer-page, .settings-page { 
-  width: min(800px, calc(100% - 40px)); margin: 0 auto; padding: 110px 0 120px; 
-}
+.todo-page, .today-page, .schedule-page, .memo-page, .expense-page, .backup-page, .calendar-page, .diary-page, .launcher-page, .timer-page, .settings-page { width: min(800px, calc(100% - 40px)); margin: 0 auto; padding: 110px 0 120px; }
 .page-title { margin-bottom: 40px; }
 .page-title span, .today-header span { display: block; margin-bottom: 10px; color: var(--text-secondary); font-size: 13px; font-weight: 700; text-transform: uppercase; letter-spacing: 1px; }
 .page-title h1, .today-header h1 { margin: 0; font-size: 40px; font-weight: 800; letter-spacing: -1.5px; color: var(--text-primary); }
@@ -214,15 +231,16 @@ input[type="time"]::-webkit-calendar-picker-indicator, input[type="date"]::-webk
 .calendar-header button:hover { background: rgba(255,255,255,0.8); transform: scale(1.05); }
 .calendar-grid { display: grid; grid-template-columns: repeat(7, 1fr); gap: 12px; }
 .calendar-day-header { text-align: center; font-size: 14px; font-weight: 700; color: var(--text-secondary); padding-bottom: 12px; }
-.calendar-cell { height: 120px; min-height: 120px; padding: 10px; display: flex; flex-direction: column; overflow-y: auto; }
+.calendar-cell { height: 120px; min-height: 120px; padding: 10px; display: flex; flex-direction: column; overflow-y: auto; transition: transform 0.2s; }
+.calendar-cell:active { transform: scale(0.95); }
 .calendar-cell::-webkit-scrollbar { width: 4px; }
 .calendar-cell::-webkit-scrollbar-thumb { background-color: rgba(150,150,150,0.3); border-radius: 4px; }
 .calendar-cell.empty { background: transparent; border: none; box-shadow: none; backdrop-filter: none; }
 .calendar-cell.today { border: 2px solid var(--primary-color); background: rgba(94, 92, 230, 0.05); box-shadow: 0 8px 24px rgba(94, 92, 230, 0.15), var(--glass-inner); }
 .app.dark .calendar-cell.today { background: rgba(94, 92, 230, 0.15); box-shadow: 0 8px 24px rgba(94, 92, 230, 0.2), var(--glass-inner); }
-.day-number { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; }
+.day-number { font-size: 15px; font-weight: 600; color: var(--text-primary); margin-bottom: 8px; pointer-events: none; }
 .calendar-cell.today .day-number { color: var(--primary-color); font-weight: 800; }
-.cell-content { display: flex; flex-direction: column; gap: 6px; }
+.cell-content { display: flex; flex-direction: column; gap: 6px; pointer-events: none; }
 .badge { font-size: 11px; padding: 4px 8px; border-radius: 6px; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; font-weight: 600; backdrop-filter: blur(5px); }
 .badge.schedule { background: rgba(94, 92, 230, 0.15); color: var(--primary-color); }
 .badge.todo { background: rgba(255, 59, 48, 0.15); color: #ff3b30; }

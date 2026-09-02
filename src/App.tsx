@@ -66,6 +66,24 @@ function App() {
 
   useEffect(() => { localStorage.setItem('myos-dark-mode', JSON.stringify(isDarkMode)) }, [isDarkMode])
 
+  // 🔥 홈 화면 위젯 커스텀(토글) 상태 관리
+  const [showBriefingWidget, setShowBriefingWidget] = useState<boolean>(() => {
+    const saved = localStorage.getItem('myos-w-briefing')
+    return saved !== null ? JSON.parse(saved) : true
+  })
+  const [showGrassWidget, setShowGrassWidget] = useState<boolean>(() => {
+    const saved = localStorage.getItem('myos-w-grass')
+    return saved !== null ? JSON.parse(saved) : true
+  })
+  const [showScheduleWidget, setShowScheduleWidget] = useState<boolean>(() => {
+    const saved = localStorage.getItem('myos-w-schedule')
+    return saved !== null ? JSON.parse(saved) : true
+  })
+
+  useEffect(() => { localStorage.setItem('myos-w-briefing', JSON.stringify(showBriefingWidget)) }, [showBriefingWidget])
+  useEffect(() => { localStorage.setItem('myos-w-grass', JSON.stringify(showGrassWidget)) }, [showGrassWidget])
+  useEffect(() => { localStorage.setItem('myos-w-schedule', JSON.stringify(showScheduleWidget)) }, [showScheduleWidget])
+
   const [page, setPage] = useState<
     'home' | 'today' | 'launcher' | 'timer' | 'calendar' | 'todos' | 'schedule' | 'memo' | 'expense' | 'diary' | 'backup' | 'settings'
   >('home')
@@ -265,18 +283,14 @@ function App() {
     return { ...nearest, dDayStr: diffDays === 0 ? 'D-Day' : `D-${diffDays}` }
   }
 
-  // 🔥 3단계 적용: 이번 달 1일부터 말일까지 채우는 '방식 A' 잔디 데이터 생성기
   const getGrassDaysThisMonth = () => {
     const days = [];
     const todayStr = getTodayKST();
     const [y, m] = todayStr.split('-').map(Number);
-    
-    // 이번 달의 총 일수 구하기
     const totalDays = new Date(y, m, 0).getDate();
 
     for (let day = 1; day <= totalDays; day++) {
       const dateStr = formatDate(y, m - 1, day);
-      
       let count = 0;
       count += todos.filter(t => t.date === dateStr && t.completed).length; 
       count += diaries.filter(d => d.date === dateStr).length; 
@@ -460,66 +474,70 @@ function App() {
               <p>필요한 것을 간단하게 시작해보세요.</p>
             </section>
             
-            <div className="briefing-widget" onClick={sendBriefing}>
-              <div className="briefing-header"><span className="briefing-title">오늘의 브리핑</span><button className="briefing-btn">알림 받기</button></div>
-              <div className="briefing-content">
-                <div>남은 할 일: <strong>{todos.filter(t => t.date === getTodayKST() && !t.completed).length}개</strong></div>
-                <div>이달 잔액: <strong>{balance.toLocaleString()}원</strong></div>
-              </div>
-            </div>
-
-            {/* 🔥 3단계 적용: 이번 달 1일부터 말일까지 보여주는 직관적인 잔디 위젯 */}
-            <div className="home-widget" style={{ display: 'block', padding: '24px', cursor: 'default' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <span style={{ fontSize: '1.05rem', fontWeight: 'bold' }}>🌱 이달의 활동 기록 ({getTodayKST().slice(0, 7)})</span>
-                <small style={{ color: 'var(--text-secondary)' }}>1일 ~ 말일</small>
-              </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', marginBottom: '12px' }}>
-                {getGrassDaysThisMonth().map((d, i) => {
-                  const bgColors = [
-                    isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(150,150,150,0.1)', 
-                    'rgba(94, 92, 230, 0.3)', 
-                    'rgba(94, 92, 230, 0.6)', 
-                    'rgba(94, 92, 230, 1)'
-                  ];
-                  return (
-                    <div key={i} 
-                      onClick={() => { 
-                        if (!d.isFuture) { triggerHaptic(); setSelectedGrass(d); }
-                      }}
-                      style={{ 
-                        aspectRatio: '1/1', 
-                        backgroundColor: d.isFuture ? (isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)') : bgColors[d.level], 
-                        borderRadius: '6px',
-                        opacity: d.isFuture ? 0.3 : 1,
-                        transition: 'transform 0.1s',
-                        cursor: d.isFuture ? 'default' : 'pointer',
-                        transform: selectedGrass?.date === d.date ? 'scale(1.1)' : 'scale(1)',
-                        border: selectedGrass?.date === d.date ? '2px solid var(--primary-color)' : 'none',
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        fontSize: '10px',
-                        color: 'var(--text-secondary)'
-                      }}>
-                      {d.dayNum}
-                    </div>
-                  );
-                })}
-              </div>
-              
-              {selectedGrass ? (
-                <div style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '600', background: 'rgba(150,150,150,0.1)', padding: '8px', borderRadius: '8px' }}>
-                  {selectedGrass.date.split('-')[1]}월 {selectedGrass.date.split('-')[2]}일 : 활동 {selectedGrass.count}개 완료
+            {/* 🔥 홈 화면 위젯 토글 반영 영역 */}
+            {showBriefingWidget && (
+              <div className="briefing-widget" onClick={sendBriefing}>
+                <div className="briefing-header"><span className="briefing-title">오늘의 브리핑</span><button className="briefing-btn">알림 받기</button></div>
+                <div className="briefing-content">
+                  <div>남은 할 일: <strong>{todos.filter(t => t.date === getTodayKST() && !t.completed).length}개</strong></div>
+                  <div>이달 잔액: <strong>{balance.toLocaleString()}원</strong></div>
                 </div>
-              ) : (
-                <div style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)', padding: '8px' }}>
-                  날짜 칸을 터치해 활동을 확인하세요
-                </div>
-              )}
-            </div>
+              </div>
+            )}
 
-            {(() => {
+            {showGrassWidget && (
+              <div className="home-widget" style={{ display: 'block', padding: '24px', cursor: 'default' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                  <span style={{ fontSize: '1.05rem', fontWeight: 'bold' }}>🌱 이달의 활동 기록 ({getTodayKST().slice(0, 7)})</span>
+                  <small style={{ color: 'var(--text-secondary)' }}>1일 ~ 말일</small>
+                </div>
+                <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', marginBottom: '12px' }}>
+                  {getGrassDaysThisMonth().map((d, i) => {
+                    const bgColors = [
+                      isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(150,150,150,0.1)', 
+                      'rgba(94, 92, 230, 0.3)', 
+                      'rgba(94, 92, 230, 0.6)', 
+                      'rgba(94, 92, 230, 1)'
+                    ];
+                    return (
+                      <div key={i} 
+                        onClick={() => { 
+                          if (!d.isFuture) { triggerHaptic(); setSelectedGrass(d); }
+                        }}
+                        style={{ 
+                          aspectRatio: '1/1', 
+                          backgroundColor: d.isFuture ? (isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)') : bgColors[d.level], 
+                          borderRadius: '6px',
+                          opacity: d.isFuture ? 0.3 : 1,
+                          transition: 'transform 0.1s',
+                          cursor: d.isFuture ? 'default' : 'pointer',
+                          transform: selectedGrass?.date === d.date ? 'scale(1.1)' : 'scale(1)',
+                          border: selectedGrass?.date === d.date ? '2px solid var(--primary-color)' : 'none',
+                          display: 'flex',
+                          alignItems: 'center',
+                          justifyContent: 'center',
+                          fontSize: '10px',
+                          color: 'var(--text-secondary)'
+                        }}>
+                        {d.dayNum}
+                      </div>
+                    );
+                  })}
+                </div>
+                
+                {selectedGrass ? (
+                  <div style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '600', background: 'rgba(150,150,150,0.1)', padding: '8px', borderRadius: '8px' }}>
+                    {selectedGrass.date.split('-')[1]}월 {selectedGrass.date.split('-')[2]}일 : 활동 {selectedGrass.count}개 완료
+                  </div>
+                ) : (
+                  <div style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)', padding: '8px' }}>
+                    날짜 칸을 터치해 활동을 확인하세요
+                  </div>
+                )}
+              </div>
+            )}
+
+            {showScheduleWidget && (() => {
               const nearest = getNearestSchedule(); if (!nearest) return null
               return (
                 <div className="home-widget" onClick={() => navigateTo('schedule')}>
@@ -532,6 +550,7 @@ function App() {
                 </div>
               )
             })()}
+
             <button className="add-button" onClick={() => { triggerHaptic(); setShowAdd(!showAdd); }}>+</button>
             {showAdd && (
               <div className="add-menu">
@@ -584,7 +603,28 @@ function App() {
         {page === 'settings' && (
           <section className="settings-page">
             <div className="page-title"><span>Myos</span><h1>설정</h1><p>보안 및 시스템 설정.</p></div>
-            <div className="settings-panel">
+            
+            {/* 🔥 홈 화면 위젯 커스텀 설정 패널 */}
+            <div className="settings-panel glass-panel" style={{ marginBottom: '24px' }}>
+              <h3 style={{ marginBottom: '12px', fontSize: '1.1rem' }}>🏠 홈 화면 위젯 관리</h3>
+              <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '16px' }}>홈 화면에 표시할 위젯을 켜고 끌 수 있습니다.</p>
+              <div style={{ display: 'flex', flexDirection: 'column', gap: '12px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>오늘의 브리핑</span>
+                  <label className="switch"><input type="checkbox" checked={showBriefingWidget} onChange={() => { triggerHaptic(); setShowBriefingWidget(!showBriefingWidget); }} /><span className="slider"></span></label>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>이달의 활동 기록 (잔디)</span>
+                  <label className="switch"><input type="checkbox" checked={showGrassWidget} onChange={() => { triggerHaptic(); setShowGrassWidget(!showGrassWidget); }} /><span className="slider"></span></label>
+                </div>
+                <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center' }}>
+                  <span>주요 일정 (D-Day)</span>
+                  <label className="switch"><input type="checkbox" checked={showScheduleWidget} onChange={() => { triggerHaptic(); setShowScheduleWidget(!showScheduleWidget); }} /><span className="slider"></span></label>
+                </div>
+              </div>
+            </div>
+
+            <div className="settings-panel glass-panel">
               <h3 style={{ marginBottom: '12px', fontSize: '1.1rem' }}>🔒 앱 잠금 설정 (PIN)</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '16px' }}>4자리 비밀번호를 설정하여 앱을 안전하게 보호하세요.</p>
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -746,26 +786,59 @@ function App() {
               <button onClick={() => shiftExpenseMonth('next')} style={{ border: 'none', background: 'rgba(255,255,255,0.3)', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', color: 'var(--text-primary)' }}>다음</button>
             </div>
             
-            {/* 🔥 3단계 적용: 지출 대비 수입 비율 비주얼 바 차트 위젯 */}
-            <div className="glass-panel" style={{ padding: '20px 24px', marginBottom: '24px' }}>
-              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.9rem', fontWeight: '600' }}>
-                <span style={{ color: '#34c759' }}>수입 (+{totalIncome.toLocaleString()}원)</span>
-                <span style={{ color: '#ff3b30' }}>지출/고정 (-{(totalExpense + totalSubAmount).toLocaleString()}원)</span>
+            {/* 🔥 리디자인된 입체적 금융 분석 리포트 카드 (변동지출 vs 고정지출 vs 수입 분석) */}
+            <div className="glass-panel" style={{ padding: '24px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
+                <span style={{ fontSize: '1.05rem', fontWeight: '800' }}>📊 이달의 재정 분석 리포트</span>
+                <span style={{ fontSize: '0.85rem', color: balance >= 0 ? '#34c759' : '#ff3b30', fontWeight: '700' }}>
+                  {balance >= 0 ? '흑자 운영 중 🥳' : '적자 주의 ⚠️'}
+                </span>
               </div>
-              <div style={{ width: '100%', height: '12px', background: 'rgba(150,150,150,0.2)', borderRadius: '6px', overflow: 'hidden', display: 'flex' }}>
-                {(() => {
-                  const outTotal = totalExpense + totalSubAmount;
-                  const totalSum = totalIncome + outTotal;
-                  if (totalSum === 0) return <div style={{ width: '100%', background: 'rgba(150,150,150,0.3)' }} />;
-                  const incomePercent = (totalIncome / totalSum) * 100;
-                  return (
-                    <>
-                      <div style={{ width: `${incomePercent}%`, background: '#34c759', transition: 'width 0.4s' }} />
-                      <div style={{ width: `${100 - incomePercent}%`, background: '#ff3b30', transition: 'width 0.4s' }} />
-                    </>
-                  );
-                })()}
+
+              {/* 1. 수입 대 총 지출 비율 바 */}
+              <div style={{ marginBottom: '16px' }}>
+                <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.85rem', fontWeight: '600' }}>
+                  <span style={{ color: '#34c759' }}>수입 (+{totalIncome.toLocaleString()}원)</span>
+                  <span style={{ color: '#ff3b30' }}>총 지출 (-{(totalExpense + totalSubAmount).toLocaleString()}원)</span>
+                </div>
+                <div style={{ width: '100%', height: '14px', background: 'rgba(150,150,150,0.2)', borderRadius: '7px', overflow: 'hidden', display: 'flex' }}>
+                  {(() => {
+                    const outTotal = totalExpense + totalSubAmount;
+                    const totalSum = totalIncome + outTotal;
+                    if (totalSum === 0) return <div style={{ width: '100%', background: 'rgba(150,150,150,0.3)' }} />;
+                    const incomePercent = (totalIncome / totalSum) * 100;
+                    return (
+                      <>
+                        <div title={`수입 비율 ${incomePercent.toFixed(1)}%`} style={{ width: `${incomePercent}%`, background: '#34c759', transition: 'width 0.4s' }} />
+                        <div title={`지출 비율 ${(100 - incomePercent).toFixed(1)}%`} style={{ width: `${100 - incomePercent}%`, background: '#ff3b30', transition: 'width 0.4s' }} />
+                      </>
+                    );
+                  })()}
+                </div>
               </div>
+
+              {/* 2. 지출 상세 구조 (변동 지출 vs 고정 지출/구독) */}
+              {(totalExpense > 0 || totalSubAmount > 0) && (
+                <div style={{ borderTop: '1px solid rgba(150,150,150,0.2)', paddingTop: '16px' }}>
+                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
+                    <span>변동 지출 ({totalExpense.toLocaleString()}원)</span>
+                    <span>고정 구독 ({totalSubAmount.toLocaleString()}원)</span>
+                  </div>
+                  <div style={{ width: '100%', height: '8px', background: 'rgba(150,150,150,0.2)', borderRadius: '4px', overflow: 'hidden', display: 'flex' }}>
+                    {(() => {
+                      const totalOut = totalExpense + totalSubAmount;
+                      if (totalOut === 0) return null;
+                      const varPercent = (totalExpense / totalOut) * 100;
+                      return (
+                        <>
+                          <div style={{ width: `${varPercent}%`, background: 'var(--primary-color)', transition: 'width 0.4s' }} />
+                          <div style={{ width: `${100 - varPercent}%`, background: '#8e8e93', transition: 'width 0.4s' }} />
+                        </>
+                      );
+                    })()}
+                  </div>
+                </div>
+              )}
             </div>
 
             <div className="expense-dashboard">

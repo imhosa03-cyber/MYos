@@ -103,7 +103,6 @@ function App() {
   const [timerTargetTime, setTimerTargetTime] = useState<number | null>(null)
   const [timerMode, setTimerMode] = useState<'study' | 'break'>('study')
 
-  // 🔥 2.1 패치: 잔디 터치 시 상태 저장을 위한 State
   const [selectedGrass, setSelectedGrass] = useState<{date: string, count: number, level: number} | null>(null)
 
   useEffect(() => {
@@ -266,15 +265,17 @@ function App() {
     return { ...nearest, dDayStr: diffDays === 0 ? 'D-Day' : `D-${diffDays}` }
   }
 
-  const getGrassDays = () => {
+  // 🔥 3단계 적용: 이번 달 1일부터 말일까지 채우는 '방식 A' 잔디 데이터 생성기
+  const getGrassDaysThisMonth = () => {
     const days = [];
-    const [y, m, d] = getTodayKST().split('-').map(Number);
-    const baseDate = new Date(y, m - 1, d);
+    const todayStr = getTodayKST();
+    const [y, m] = todayStr.split('-').map(Number);
+    
+    // 이번 달의 총 일수 구하기
+    const totalDays = new Date(y, m, 0).getDate();
 
-    for (let i = 27; i >= 0; i--) {
-      const date = new Date(baseDate);
-      date.setDate(baseDate.getDate() - i);
-      const dateStr = formatDate(date.getFullYear(), date.getMonth(), date.getDate());
+    for (let day = 1; day <= totalDays; day++) {
+      const dateStr = formatDate(y, m - 1, day);
       
       let count = 0;
       count += todos.filter(t => t.date === dateStr && t.completed).length; 
@@ -285,7 +286,8 @@ function App() {
       else if (count === 2) level = 2;
       else if (count >= 3) level = 3;
 
-      days.push({ date: dateStr, level, count });
+      const isFuture = dateStr > todayStr;
+      days.push({ date: dateStr, level, count, isFuture, dayNum: day });
     }
     return days;
   }
@@ -466,14 +468,14 @@ function App() {
               </div>
             </div>
 
-            {/* 🔥 2.1 패치: 잔디 터치 시 툴팁을 모바일 친화적으로 텍스트로 보여주기 */}
+            {/* 🔥 3단계 적용: 이번 달 1일부터 말일까지 보여주는 직관적인 잔디 위젯 */}
             <div className="home-widget" style={{ display: 'block', padding: '24px', cursor: 'default' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <span style={{ fontSize: '1.05rem', fontWeight: 'bold' }}>🌱 나의 활동 기록</span>
-                <small style={{ color: 'var(--text-secondary)' }}>최근 28일</small>
+                <span style={{ fontSize: '1.05rem', fontWeight: 'bold' }}>🌱 이달의 활동 기록 ({getTodayKST().slice(0, 7)})</span>
+                <small style={{ color: 'var(--text-secondary)' }}>1일 ~ 말일</small>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', marginBottom: '12px' }}>
-                {getGrassDays().map((d, i) => {
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '6px', marginBottom: '12px' }}>
+                {getGrassDaysThisMonth().map((d, i) => {
                   const bgColors = [
                     isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(150,150,150,0.1)', 
                     'rgba(94, 92, 230, 0.3)', 
@@ -482,28 +484,37 @@ function App() {
                   ];
                   return (
                     <div key={i} 
-                      onClick={() => { triggerHaptic(); setSelectedGrass(d); }}
+                      onClick={() => { 
+                        if (!d.isFuture) { triggerHaptic(); setSelectedGrass(d); }
+                      }}
                       style={{ 
                         aspectRatio: '1/1', 
-                        backgroundColor: bgColors[d.level], 
+                        backgroundColor: d.isFuture ? (isDarkMode ? 'rgba(255,255,255,0.02)' : 'rgba(0,0,0,0.02)') : bgColors[d.level], 
                         borderRadius: '6px',
+                        opacity: d.isFuture ? 0.3 : 1,
                         transition: 'transform 0.1s',
-                        cursor: 'pointer',
+                        cursor: d.isFuture ? 'default' : 'pointer',
                         transform: selectedGrass?.date === d.date ? 'scale(1.1)' : 'scale(1)',
-                        border: selectedGrass?.date === d.date ? '2px solid var(--primary-color)' : 'none'
-                      }}></div>
+                        border: selectedGrass?.date === d.date ? '2px solid var(--primary-color)' : 'none',
+                        display: 'flex',
+                        alignItems: 'center',
+                        justifyContent: 'center',
+                        fontSize: '10px',
+                        color: 'var(--text-secondary)'
+                      }}>
+                      {d.dayNum}
+                    </div>
                   );
                 })}
               </div>
               
-              {/* 터치 시 뜨는 상세 정보 영역 */}
               {selectedGrass ? (
                 <div style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '600', background: 'rgba(150,150,150,0.1)', padding: '8px', borderRadius: '8px' }}>
                   {selectedGrass.date.split('-')[1]}월 {selectedGrass.date.split('-')[2]}일 : 활동 {selectedGrass.count}개 완료
                 </div>
               ) : (
                 <div style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)', padding: '8px' }}>
-                  날짜를 터치해보세요
+                  날짜 칸을 터치해 활동을 확인하세요
                 </div>
               )}
             </div>
@@ -734,6 +745,29 @@ function App() {
               <strong style={{ fontSize: '1.1rem', color: 'var(--text-primary)' }}>{expenseMonth}</strong>
               <button onClick={() => shiftExpenseMonth('next')} style={{ border: 'none', background: 'rgba(255,255,255,0.3)', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', color: 'var(--text-primary)' }}>다음</button>
             </div>
+            
+            {/* 🔥 3단계 적용: 지출 대비 수입 비율 비주얼 바 차트 위젯 */}
+            <div className="glass-panel" style={{ padding: '20px 24px', marginBottom: '24px' }}>
+              <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '8px', fontSize: '0.9rem', fontWeight: '600' }}>
+                <span style={{ color: '#34c759' }}>수입 (+{totalIncome.toLocaleString()}원)</span>
+                <span style={{ color: '#ff3b30' }}>지출/고정 (-{(totalExpense + totalSubAmount).toLocaleString()}원)</span>
+              </div>
+              <div style={{ width: '100%', height: '12px', background: 'rgba(150,150,150,0.2)', borderRadius: '6px', overflow: 'hidden', display: 'flex' }}>
+                {(() => {
+                  const outTotal = totalExpense + totalSubAmount;
+                  const totalSum = totalIncome + outTotal;
+                  if (totalSum === 0) return <div style={{ width: '100%', background: 'rgba(150,150,150,0.3)' }} />;
+                  const incomePercent = (totalIncome / totalSum) * 100;
+                  return (
+                    <>
+                      <div style={{ width: `${incomePercent}%`, background: '#34c759', transition: 'width 0.4s' }} />
+                      <div style={{ width: `${100 - incomePercent}%`, background: '#ff3b30', transition: 'width 0.4s' }} />
+                    </>
+                  );
+                })()}
+              </div>
+            </div>
+
             <div className="expense-dashboard">
               <div className="expense-main">
                 <div className="expense-input">

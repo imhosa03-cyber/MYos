@@ -66,7 +66,6 @@ function App() {
 
   useEffect(() => { localStorage.setItem('myos-dark-mode', JSON.stringify(isDarkMode)) }, [isDarkMode])
 
-  // 🔥 홈 화면 위젯 커스텀(토글) 상태 관리
   const [showBriefingWidget, setShowBriefingWidget] = useState<boolean>(() => {
     const saved = localStorage.getItem('myos-w-briefing')
     return saved !== null ? JSON.parse(saved) : true
@@ -430,9 +429,10 @@ function App() {
         </div>
       )}
 
-      <aside className={`side-menu ${showMenu ? 'open' : ''}`}>
-        <div className="menu-header"><span>Myos</span><button onClick={() => setShowMenu(false)}>✕</button></div>
-        <nav>
+      {/* 🔥 사이드 메뉴 영역 수정: 내부 스크롤 적용으로 항목 잘림 방지 */}
+      <aside className={`side-menu ${showMenu ? 'open' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
+        <div className="menu-header" style={{ flexShrink: 0 }}><span>Myos</span><button onClick={() => setShowMenu(false)}>✕</button></div>
+        <nav style={{ flex: 1, overflowY: 'auto', paddingBottom: '20px' }}>
           <button onClick={() => navigateTo('home')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>홈</span></button>
           <button onClick={() => navigateTo('today')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg> <span>오늘</span></button>
           <button onClick={() => navigateTo('launcher')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> <span>퀵 런처</span></button>
@@ -449,13 +449,14 @@ function App() {
             <span>도움말</span>
           </button>
           <button onClick={() => navigateTo('backup')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><ellipse cx="12" cy="5" rx="9" ry="3"/><path d="M21 12c0 1.66-4 3-9 3s-9-1.34-9-3"/><path d="M3 5v14c0 1.66 4 3 9 3s9-1.34 9-3V5"/></svg> <span>데이터 관리</span></button>
+
+          <div style={{ marginTop: '12px', padding: '0 4px' }}><button onClick={requestNotification} className="secondary-btn" style={{ width: '100%', fontSize: '13px' }}>알림 권한 설정</button></div>
+          <div className="dark-mode-toggle-container">
+            <span className="dark-mode-label">다크 모드</span>
+            <label className="switch"><input type="checkbox" checked={isDarkMode} onChange={() => { triggerHaptic(); setIsDarkMode(!isDarkMode); }} /><span className="slider"></span></label>
+          </div>
+          <button className="settings" onClick={() => navigateTo('settings')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> <span>설정 (잠금)</span></button>
         </nav>
-        <div style={{ marginTop: '12px', padding: '0 4px' }}><button onClick={requestNotification} className="secondary-btn" style={{ width: '100%', fontSize: '13px' }}>알림 권한 설정</button></div>
-        <div className="dark-mode-toggle-container">
-          <span className="dark-mode-label">다크 모드</span>
-          <label className="switch"><input type="checkbox" checked={isDarkMode} onChange={() => { triggerHaptic(); setIsDarkMode(!isDarkMode); }} /><span className="slider"></span></label>
-        </div>
-        <button className="settings" onClick={() => navigateTo('settings')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="11" width="18" height="11" rx="2" ry="2"/><path d="M7 11V7a5 5 0 0 1 10 0v4"/></svg> <span>설정 (잠금)</span></button>
       </aside>
 
       {showMenu && <div className="overlay" onClick={() => setShowMenu(false)} />}
@@ -474,7 +475,6 @@ function App() {
               <p>필요한 것을 간단하게 시작해보세요.</p>
             </section>
             
-            {/* 🔥 홈 화면 위젯 토글 반영 영역 */}
             {showBriefingWidget && (
               <div className="briefing-widget" onClick={sendBriefing}>
                 <div className="briefing-header"><span className="briefing-title">오늘의 브리핑</span><button className="briefing-btn">알림 받기</button></div>
@@ -604,7 +604,6 @@ function App() {
           <section className="settings-page">
             <div className="page-title"><span>Myos</span><h1>설정</h1><p>보안 및 시스템 설정.</p></div>
             
-            {/* 🔥 홈 화면 위젯 커스텀 설정 패널 */}
             <div className="settings-panel glass-panel" style={{ marginBottom: '24px' }}>
               <h3 style={{ marginBottom: '12px', fontSize: '1.1rem' }}>🏠 홈 화면 위젯 관리</h3>
               <p style={{ color: 'var(--text-secondary)', fontSize: '0.9rem', marginBottom: '16px' }}>홈 화면에 표시할 위젯을 켜고 끌 수 있습니다.</p>
@@ -786,7 +785,6 @@ function App() {
               <button onClick={() => shiftExpenseMonth('next')} style={{ border: 'none', background: 'rgba(255,255,255,0.3)', padding: '8px 14px', borderRadius: '8px', cursor: 'pointer', color: 'var(--text-primary)' }}>다음</button>
             </div>
             
-            {/* 🔥 리디자인된 입체적 금융 분석 리포트 카드 (변동지출 vs 고정지출 vs 수입 분석) */}
             <div className="glass-panel" style={{ padding: '24px', marginBottom: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <span style={{ fontSize: '1.05rem', fontWeight: '800' }}>📊 이달의 재정 분석 리포트</span>
@@ -795,7 +793,6 @@ function App() {
                 </span>
               </div>
 
-              {/* 1. 수입 대 총 지출 비율 바 */}
               <div style={{ marginBottom: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.85rem', fontWeight: '600' }}>
                   <span style={{ color: '#34c759' }}>수입 (+{totalIncome.toLocaleString()}원)</span>
@@ -817,7 +814,6 @@ function App() {
                 </div>
               </div>
 
-              {/* 2. 지출 상세 구조 (변동 지출 vs 고정 지출/구독) */}
               {(totalExpense > 0 || totalSubAmount > 0) && (
                 <div style={{ borderTop: '1px solid rgba(150,150,150,0.2)', paddingTop: '16px' }}>
                   <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-secondary)' }}>

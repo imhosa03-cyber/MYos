@@ -17,7 +17,6 @@ const triggerHaptic = () => {
   }
 }
 
-// 🔥 2단계 업데이트: Todo와 Memo에 tag 속성 추가
 type TodoPriority = 'high' | 'normal' | 'low'
 type Todo = { id: number; text: string; date: string; time: string; priority: TodoPriority; completed: boolean; tag?: string }
 type Schedule = { id: number; title: string; date: string; time: string }
@@ -76,14 +75,12 @@ function App() {
     if (!saved) return []
     try { return JSON.parse(saved).map((todo: Todo) => ({ ...todo, date: todo.date ?? getTodayKST(), priority: todo.priority ?? 'normal', time: todo.time ?? '', tag: todo.tag ?? '' })) } catch { return [] }
   })
-  // 🔥 2단계 업데이트: 태그 상태 추가
   const [newTodo, setNewTodo] = useState(''); const [newTodoDate, setNewTodoDate] = useState(getTodayKST()); const [newTodoTime, setNewTodoTime] = useState(''); const [newTodoPriority, setNewTodoPriority] = useState<TodoPriority>('normal'); const [newTodoTag, setNewTodoTag] = useState(''); const [editingTodoId, setEditingTodoId] = useState<number | null>(null); const [todoSearch, setTodoSearch] = useState('')
 
   const [schedules, setSchedules] = useState<Schedule[]>(() => { const saved = localStorage.getItem('myos-schedules'); return saved ? JSON.parse(saved) : [] })
   const [newScheduleTitle, setNewScheduleTitle] = useState(''); const [newScheduleDate, setNewScheduleDate] = useState(getTodayKST()); const [newScheduleTime, setNewScheduleTime] = useState(''); const [editingScheduleId, setEditingScheduleId] = useState<number | null>(null)
 
   const [memos, setMemos] = useState<Memo[]>(() => { const saved = localStorage.getItem('myos-memos'); return saved ? JSON.parse(saved) : [] })
-  // 🔥 2단계 업데이트: 메모 태그 상태 추가
   const [newMemoTitle, setNewMemoTitle] = useState(''); const [newMemoContent, setNewMemoContent] = useState(''); const [newMemoTag, setNewMemoTag] = useState(''); const [editingMemoId, setEditingMemoId] = useState<number | null>(null); const [memoSearch, setMemoSearch] = useState('')
 
   const [expenses, setExpenses] = useState<Expense[]>(() => { const saved = localStorage.getItem('myos-expenses'); return saved ? JSON.parse(saved) : [] })
@@ -105,6 +102,9 @@ function App() {
   const [isTimerRunning, setIsTimerRunning] = useState(false)
   const [timerTargetTime, setTimerTargetTime] = useState<number | null>(null)
   const [timerMode, setTimerMode] = useState<'study' | 'break'>('study')
+
+  // 🔥 2.1 패치: 잔디 터치 시 상태 저장을 위한 State
+  const [selectedGrass, setSelectedGrass] = useState<{date: string, count: number, level: number} | null>(null)
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>
@@ -218,7 +218,6 @@ function App() {
   const generateCalendarDays = (): (number | null)[] => { const totalDays = getDaysInMonth(calYear, calMonth); const firstDay = getFirstDayOfMonth(calYear, calMonth); const days: (number | null)[] = []; for (let i = 0; i < firstDay; i++) days.push(null); for (let i = 1; i <= totalDays; i++) days.push(i); return days }
   const formatDate = (year: number, month: number, day: number) => { const m = String(month + 1).padStart(2, '0'); const d = String(day).padStart(2, '0'); return `${year}-${m}-${d}` }
 
-  // 🔥 2단계 업데이트: 태그를 포함하여 할 일 추가 및 수정
   const addTodo = () => { triggerHaptic(); const text = newTodo.trim(); if (!text || !newTodoDate) return; const todo: Todo = { id: Date.now(), text, date: newTodoDate, time: newTodoTime, priority: newTodoPriority, completed: false, tag: newTodoTag.trim() }; setTodos((current) => [...current, todo]); setNewTodo(''); setNewTodoDate(getTodayKST()); setNewTodoTime(''); setNewTodoPriority('normal'); setNewTodoTag('') }
   const startEditTodo = (todo: Todo) => { triggerHaptic(); setEditingTodoId(todo.id); setNewTodo(todo.text); setNewTodoDate(todo.date); setNewTodoTime(todo.time ?? ''); setNewTodoPriority(todo.priority ?? 'normal'); setNewTodoTag(todo.tag ?? '') }
   const updateTodo = () => { triggerHaptic(); const text = newTodo.trim(); if (editingTodoId === null || !text || !newTodoDate) return; setTodos((current) => current.map((todo) => todo.id === editingTodoId ? { ...todo, text, date: newTodoDate, time: newTodoTime, priority: newTodoPriority, tag: newTodoTag.trim() } : todo )); setEditingTodoId(null); setNewTodo(''); setNewTodoDate(getTodayKST()); setNewTodoTime(''); setNewTodoPriority('normal'); setNewTodoTag('') }
@@ -231,7 +230,6 @@ function App() {
   const startEditSchedule = (schedule: Schedule) => { triggerHaptic(); setEditingScheduleId(schedule.id); setNewScheduleTitle(schedule.title); setNewScheduleDate(schedule.date); setNewScheduleTime(schedule.time) }
   const updateSchedule = () => { triggerHaptic(); const title = newScheduleTitle.trim(); if (editingScheduleId === null || !title || !newScheduleDate || !newScheduleTime) return; setSchedules((current) => current.map((schedule) => schedule.id === editingScheduleId ? { ...schedule, title, date: newScheduleDate, time: newScheduleTime } : schedule )); setEditingScheduleId(null); setNewScheduleTitle(''); setNewScheduleDate(getTodayKST()); setNewScheduleTime('') }
 
-  // 🔥 2단계 업데이트: 태그를 포함하여 메모 추가 및 수정
   const addMemo = () => { triggerHaptic(); const title = newMemoTitle.trim(); const content = newMemoContent.trim(); if (!title || !content) return; const memo: Memo = { id: Date.now(), title, content, date: getTodayKST(), tag: newMemoTag.trim() }; setMemos((current) => [memo, ...current]); setNewMemoTitle(''); setNewMemoContent(''); setNewMemoTag('') }
   const startEditMemo = (memo: Memo) => { triggerHaptic(); setEditingMemoId(memo.id); setNewMemoTitle(memo.title); setNewMemoContent(memo.content); setNewMemoTag(memo.tag ?? '') }
   const cancelEditMemo = () => { setEditingMemoId(null); setNewMemoTitle(''); setNewMemoContent(''); setNewMemoTag('') }
@@ -268,7 +266,6 @@ function App() {
     return { ...nearest, dDayStr: diffDays === 0 ? 'D-Day' : `D-${diffDays}` }
   }
 
-  // 🔥 2단계 업데이트: 최근 28일간의 잔디 심기(활동 기록) 데이터 생성기
   const getGrassDays = () => {
     const days = [];
     const [y, m, d] = getTodayKST().split('-').map(Number);
@@ -280,8 +277,8 @@ function App() {
       const dateStr = formatDate(date.getFullYear(), date.getMonth(), date.getDate());
       
       let count = 0;
-      count += todos.filter(t => t.date === dateStr && t.completed).length; // 완료한 할 일
-      count += diaries.filter(d => d.date === dateStr).length; // 작성한 일기
+      count += todos.filter(t => t.date === dateStr && t.completed).length; 
+      count += diaries.filter(d => d.date === dateStr).length; 
       
       let level = 0;
       if (count === 1) level = 1;
@@ -394,7 +391,6 @@ function App() {
         </div>
       )}
 
-      {/* 🔥 2단계 업데이트: 도움말 첫 번째 항목 정렬 문제 해결! (배경 박스 삭제 후 구조 통일) */}
       {showHelp && (
         <div className="modal-overlay" onClick={() => { triggerHaptic(); setShowHelp(false); }}>
           <div className="modal-content glass-panel" onClick={e => e.stopPropagation()}>
@@ -470,13 +466,13 @@ function App() {
               </div>
             </div>
 
-            {/* 🔥 2단계 업데이트: 홈 화면에 '잔디 심기' 위젯 추가 */}
+            {/* 🔥 2.1 패치: 잔디 터치 시 툴팁을 모바일 친화적으로 텍스트로 보여주기 */}
             <div className="home-widget" style={{ display: 'block', padding: '24px', cursor: 'default' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
                 <span style={{ fontSize: '1.05rem', fontWeight: 'bold' }}>🌱 나의 활동 기록</span>
                 <small style={{ color: 'var(--text-secondary)' }}>최근 28일</small>
               </div>
-              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px' }}>
+              <div style={{ display: 'grid', gridTemplateColumns: 'repeat(7, 1fr)', gap: '8px', marginBottom: '12px' }}>
                 {getGrassDays().map((d, i) => {
                   const bgColors = [
                     isDarkMode ? 'rgba(255,255,255,0.05)' : 'rgba(150,150,150,0.1)', 
@@ -485,16 +481,31 @@ function App() {
                     'rgba(94, 92, 230, 1)'
                   ];
                   return (
-                    <div key={i} title={`${d.date} (${d.count}개 활동)`} style={{ 
-                      aspectRatio: '1/1', 
-                      backgroundColor: bgColors[d.level], 
-                      borderRadius: '6px',
-                      transition: 'transform 0.2s',
-                      cursor: 'help'
-                    }}></div>
+                    <div key={i} 
+                      onClick={() => { triggerHaptic(); setSelectedGrass(d); }}
+                      style={{ 
+                        aspectRatio: '1/1', 
+                        backgroundColor: bgColors[d.level], 
+                        borderRadius: '6px',
+                        transition: 'transform 0.1s',
+                        cursor: 'pointer',
+                        transform: selectedGrass?.date === d.date ? 'scale(1.1)' : 'scale(1)',
+                        border: selectedGrass?.date === d.date ? '2px solid var(--primary-color)' : 'none'
+                      }}></div>
                   );
                 })}
               </div>
+              
+              {/* 터치 시 뜨는 상세 정보 영역 */}
+              {selectedGrass ? (
+                <div style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-primary)', fontWeight: '600', background: 'rgba(150,150,150,0.1)', padding: '8px', borderRadius: '8px' }}>
+                  {selectedGrass.date.split('-')[1]}월 {selectedGrass.date.split('-')[2]}일 : 활동 {selectedGrass.count}개 완료
+                </div>
+              ) : (
+                <div style={{ textAlign: 'center', fontSize: '0.9rem', color: 'var(--text-secondary)', padding: '8px' }}>
+                  날짜를 터치해보세요
+                </div>
+              )}
             </div>
 
             {(() => {
@@ -649,7 +660,6 @@ function App() {
             <div className="page-title"><span>Myos</span><h1>할 일</h1></div>
             <div className="todo-input" style={{ display: 'flex', flexDirection: 'column', gap: '10px', marginBottom: '10px' }}>
               <input type="text" placeholder="할 일 입력" value={newTodo} onChange={(e) => setNewTodo(e.target.value)} />
-              {/* 🔥 2단계 업데이트: 할 일 태그 입력 필드 추가 */}
               <div style={{ display: 'flex', gap: '8px', width: '100%' }}>
                 <input type="date" value={newTodoDate} onChange={(e) => setNewTodoDate(e.target.value)} className="date-input" style={{ flex: 1.5 }} />
                 <input type="time" value={newTodoTime} onChange={(e) => setNewTodoTime(e.target.value)} className="time-input" style={{ flex: 1 }} />
@@ -673,7 +683,6 @@ function App() {
                   <div style={{ display: 'flex', alignItems: 'center', gap: '10px', width: '100%' }}>
                     <button className="check-button" onClick={() => toggleTodo(todo.id)}>{todo.completed ? '✓' : ''}</button>
                     <span style={{ fontSize: '1.05rem', fontWeight: '500', wordBreak: 'break-all', flex: 1 }}>
-                      {/* 🔥 2단계 업데이트: 입력한 태그를 예쁜 뱃지 모양으로 렌더링 */}
                       {todo.tag && <span style={{ background: 'rgba(94, 92, 230, 0.15)', color: 'var(--primary-color)', padding: '4px 8px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold', marginRight: '8px', display: 'inline-block', verticalAlign: 'middle' }}>#{todo.tag}</span>}
                       {todo.text}
                     </span>
@@ -786,7 +795,6 @@ function App() {
             <div className="page-title"><span>Myos</span><h1>메모</h1></div>
             <div className="memo-input" style={{ display: 'flex', flexDirection: 'column', gap: '12px', marginBottom: '15px' }}>
               <input type="text" placeholder="제목" value={newMemoTitle} onChange={(e) => setNewMemoTitle(e.target.value)} />
-              {/* 🔥 2단계 업데이트: 메모장 태그 입력 필드 추가 */}
               <input type="text" placeholder="태그 (예: 시스템프로그래밍, 아이디어)" value={newMemoTag} onChange={(e) => setNewMemoTag(e.target.value)} />
               <textarea placeholder="내용" value={newMemoContent} onChange={(e) => setNewMemoContent(e.target.value)} rows={4} />
               <div style={{ display: 'flex', gap: '8px' }}>
@@ -800,7 +808,6 @@ function App() {
               {memos.filter(m => m.title.includes(memoSearch) || m.content.includes(memoSearch)).map(memo => (
                 <div className="memo-item" key={memo.id} style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
                   <h3 style={{ margin: '0 0 8px 0', fontSize: '1.2rem', display: 'flex', alignItems: 'center', gap: '8px' }}>
-                    {/* 🔥 2단계 업데이트: 메모장 리스트 태그 렌더링 */}
                     {memo.tag && <span style={{ background: 'rgba(94, 92, 230, 0.15)', color: 'var(--primary-color)', padding: '4px 8px', borderRadius: '8px', fontSize: '12px', fontWeight: 'bold' }}>#{memo.tag}</span>}
                     {memo.title}
                   </h3>

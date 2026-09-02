@@ -56,7 +56,6 @@ function App() {
 
   const [showMenu, setShowMenu] = useState(false)
   const [showAdd, setShowAdd] = useState(false)
-  
   const [showHelp, setShowHelp] = useState(false)
   const [selectedCalDate, setSelectedCalDate] = useState<string | null>(null)
 
@@ -97,29 +96,62 @@ function App() {
   const [launchers, setLaunchers] = useState<Launcher[]>(() => { const saved = localStorage.getItem('myos-launchers'); return saved ? JSON.parse(saved) : [] })
   const [newLauncherName, setNewLauncherName] = useState(''); const [newLauncherUrl, setNewLauncherUrl] = useState('')
 
+  /* 🔥 1단계 업데이트: 백그라운드 구동을 위한 타이머 로직 개선 */
   const [studyMinutes, setStudyMinutes] = useState(50)
   const [breakMinutes, setBreakMinutes] = useState(10)
   const [timeLeft, setTimeLeft] = useState(50 * 60)
   const [isTimerRunning, setIsTimerRunning] = useState(false)
+  const [timerTargetTime, setTimerTargetTime] = useState<number | null>(null)
   const [timerMode, setTimerMode] = useState<'study' | 'break'>('study')
 
   useEffect(() => {
     let interval: ReturnType<typeof setInterval>
-    if (isTimerRunning && timeLeft > 0) {
-      interval = setInterval(() => setTimeLeft(prev => prev - 1), 1000)
-    } else if (timeLeft === 0) {
-      setIsTimerRunning(false)
-      triggerHaptic();
-      if (Notification.permission === 'granted') {
-        new Notification('Pomodoro Timer', { body: timerMode === 'study' ? '집중 시간이 종료되었습니다! 휴식하세요.' : '휴식 시간이 종료되었습니다! 다시 집중해볼까요?' })
-      }
-      alert(timerMode === 'study' ? '집중 시간 종료! 휴식하세요 ☕' : '휴식 시간 종료! 다시 집중해봅시다 🔥')
-      const nextMode = timerMode === 'study' ? 'break' : 'study'
-      setTimerMode(nextMode)
-      setTimeLeft(nextMode === 'study' ? studyMinutes * 60 : breakMinutes * 60)
+    if (isTimerRunning && timerTargetTime) {
+      interval = setInterval(() => {
+        const now = Date.now()
+        // 목표 시간에서 현재 시간을 빼서 남은 시간 계산 (백그라운드에서도 정확함)
+        const remaining = Math.max(0, Math.floor((timerTargetTime - now) / 1000))
+        setTimeLeft(remaining)
+
+        if (remaining === 0) {
+          setIsTimerRunning(false)
+          setTimerTargetTime(null)
+          triggerHaptic();
+          if (Notification.permission === 'granted') {
+            new Notification('Pomodoro Timer', { body: timerMode === 'study' ? '집중 시간이 종료되었습니다! 휴식하세요.' : '휴식 시간이 종료되었습니다! 다시 집중해볼까요?' })
+          }
+          
+          setTimeout(() => {
+            alert(timerMode === 'study' ? '집중 시간 종료! 휴식하세요 ☕' : '휴식 시간 종료! 다시 집중해봅시다 🔥')
+            const nextMode = timerMode === 'study' ? 'break' : 'study'
+            setTimerMode(nextMode)
+            setTimeLeft(nextMode === 'study' ? studyMinutes * 60 : breakMinutes * 60)
+          }, 100)
+        }
+      }, 1000)
     }
     return () => clearInterval(interval)
-  }, [isTimerRunning, timeLeft, timerMode, studyMinutes, breakMinutes])
+  }, [isTimerRunning, timerTargetTime, timerMode, studyMinutes, breakMinutes])
+
+  const toggleTimer = () => {
+    triggerHaptic()
+    if (isTimerRunning) {
+      // 일시정지
+      setIsTimerRunning(false)
+      setTimerTargetTime(null)
+    } else {
+      // 시작 및 재개: 현재 시간에 남은 초(timeLeft)를 더해서 목표 시간 설정
+      setIsTimerRunning(true)
+      setTimerTargetTime(Date.now() + timeLeft * 1000)
+    }
+  }
+
+  const resetTimer = () => {
+    triggerHaptic()
+    setIsTimerRunning(false)
+    setTimerTargetTime(null)
+    setTimeLeft(timerMode === 'study' ? studyMinutes * 60 : breakMinutes * 60)
+  }
 
   const formatTime = (seconds: number) => {
     const m = Math.floor(seconds / 60).toString().padStart(2, '0')
@@ -336,6 +368,7 @@ function App() {
         </div>
       )}
 
+      {/* 🔥 1단계 업데이트: 매력적으로 변경된 UX 카피라이팅 적용 */}
       {showHelp && (
         <div className="modal-overlay" onClick={() => { triggerHaptic(); setShowHelp(false); }}>
           <div className="modal-content glass-panel" onClick={e => e.stopPropagation()}>
@@ -348,22 +381,19 @@ function App() {
               <div style={{background:'rgba(150,150,150,0.1)', padding:'16px', borderRadius:'16px'}}>
                 <h3 style={{margin:'0 0 8px 0', fontSize:'1.05rem', display:'flex', alignItems:'center', gap:'6px'}}>☑️ 할 일 vs 오늘 vs 일정</h3>
                 <p style={{margin:0, fontSize:'0.9rem', lineHeight:'1.5', color:'var(--text-secondary)'}}>
-                  <strong>할 일:</strong> 언젠가 완료하고 체크(✓)해야 하는 모든 작업의 리스트업 창고입니다.<br/>
-                  <strong>일정:</strong> 특정 시간, 장소가 정해진 이벤트(시험, 미팅 등)를 캘린더에 표시합니다.<br/>
-                  <strong>오늘:</strong> 할 일 목록 중 '딱 오늘 하루 집중해서 끝낼 작업'만 모아보는 대시보드입니다.
+                  머릿속 복잡한 일들은 <strong>'할 일'</strong>에, 오늘 당장 끝낼 일은 <strong>'오늘'</strong>에, 시간 약속은 <strong>'일정'</strong>에 맡겨주세요!
                 </p>
               </div>
-              <div><strong style={{display:'block', marginBottom:'4px'}}>🚀 퀵 런처</strong><span style={{fontSize:'0.9rem', color:'var(--text-secondary)'}}>자주 가는 웹사이트(학교 포털, 프로그래머스 등) 링크를 등록하여 원클릭으로 접속하세요.</span></div>
-              <div><strong style={{display:'block', marginBottom:'4px'}}>⏱️ Pomodoro Timer</strong><span style={{fontSize:'0.9rem', color:'var(--text-secondary)'}}>집중 시간과 휴식 시간을 설정하고 루틴을 관리합니다. 공부나 코딩할 때 유용합니다.</span></div>
-              <div><strong style={{display:'block', marginBottom:'4px'}}>💰 지출</strong><span style={{fontSize:'0.9rem', color:'var(--text-secondary)'}}>수입/지출을 기록하고 월별로 확인합니다. 우측에 매월 나가는 구독료(고정 지출)도 등록할 수 있습니다.</span></div>
-              <div><strong style={{display:'block', marginBottom:'4px'}}>💾 데이터 관리</strong><span style={{fontSize:'0.9rem', color:'var(--text-secondary)'}}>현재 저장된 모든 데이터를 `.json` 파일로 기기에 백업하고, 다른 기기에서 복구할 수 있습니다.</span></div>
-              <div><strong style={{display:'block', marginBottom:'4px'}}>🔒 설정 (잠금)</strong><span style={{fontSize:'0.9rem', color:'var(--text-secondary)'}}>4자리 PIN 번호를 설정하면, 앱을 열 때마다 비밀번호를 요구하여 사생활을 보호합니다.</span></div>
+              <div><strong style={{display:'block', marginBottom:'4px'}}>🚀 퀵 런처</strong><span style={{fontSize:'0.9rem', color:'var(--text-secondary)'}}>자주 찾는 사이트를 등록해두고 1초 만에 이동하세요.</span></div>
+              <div><strong style={{display:'block', marginBottom:'4px'}}>⏱️ Pomodoro Timer</strong><span style={{fontSize:'0.9rem', color:'var(--text-secondary)'}}>집중 시간과 휴식 시간을 설정해 나만의 루틴을 만들어보세요. 공부할 때 사용해보세요!</span></div>
+              <div><strong style={{display:'block', marginBottom:'4px'}}>💰 지출</strong><span style={{fontSize:'0.9rem', color:'var(--text-secondary)'}}>내 지갑의 흐름을 한눈에! 수입/지출은 물론, 매달 빠져나가는 구독료(고정 지출)까지 똑똑하게 관리해 보세요.</span></div>
+              <div><strong style={{display:'block', marginBottom:'4px'}}>💾 데이터 관리</strong><span style={{fontSize:'0.9rem', color:'var(--text-secondary)'}}>소중한 내 기록들을 안전하게 보관하세요. 백업 파일을 만들어두면 기기를 바꿔도 그대로 이어갈 수 있습니다.</span></div>
+              <div><strong style={{display:'block', marginBottom:'4px'}}>🔒 설정 (잠금)</strong><span style={{fontSize:'0.9rem', color:'var(--text-secondary)'}}>4자리 PIN 번호로 나만의 비밀 공간을 만들어주세요. 앱을 켤 때마다 사생활을 완벽하게 보호합니다.</span></div>
             </div>
           </div>
         </div>
       )}
 
-      {/* 🌟 사이드 메뉴에 도움말 버튼 추가 완료 */}
       <aside className={`side-menu ${showMenu ? 'open' : ''}`}>
         <div className="menu-header"><span>Myos</span><button onClick={() => setShowMenu(false)}>✕</button></div>
         <nav>
@@ -395,7 +425,6 @@ function App() {
       {showMenu && <div className="overlay" onClick={() => setShowMenu(false)} />}
 
       <main className="home">
-        {/* 상단 헤더 원래대로 롤백 (깔끔하게) */}
         <header>
           <button className="menu-button" onClick={() => { triggerHaptic(); setShowMenu(true); }}>☰</button>
           <div className="logo" onClick={() => navigateTo('home')} style={{ cursor: 'pointer' }}>Myos</div>
@@ -444,8 +473,8 @@ function App() {
             <div className="page-title"><span>Myos</span><h1>Pomodoro Timer</h1><p>자유로운 집중 & 휴식 루틴 관리.</p></div>
             <div className="timer-container">
               <div className="timer-mode-selector">
-                <button className={timerMode === 'study' ? 'active' : ''} onClick={() => { triggerHaptic(); setTimerMode('study'); setTimeLeft(studyMinutes * 60); setIsTimerRunning(false) }}>집중 모드</button>
-                <button className={timerMode === 'break' ? 'active' : ''} onClick={() => { triggerHaptic(); setTimerMode('break'); setTimeLeft(breakMinutes * 60); setIsTimerRunning(false) }}>휴식 모드</button>
+                <button className={timerMode === 'study' ? 'active' : ''} onClick={() => { triggerHaptic(); setTimerMode('study'); setTimeLeft(studyMinutes * 60); setIsTimerRunning(false); setTimerTargetTime(null); }}>집중 모드</button>
+                <button className={timerMode === 'break' ? 'active' : ''} onClick={() => { triggerHaptic(); setTimerMode('break'); setTimeLeft(breakMinutes * 60); setIsTimerRunning(false); setTimerTargetTime(null); }}>휴식 모드</button>
               </div>
               
               <div className="timer-display">{formatTime(timeLeft)}</div>
@@ -471,9 +500,10 @@ function App() {
               )}
               {isTimerRunning && <div style={{ height: '74px' }}></div>}
 
+              {/* 🔥 1단계 업데이트: 향상된 타이머 버튼 로직 적용 */}
               <div className="timer-controls">
-                <button className="primary-btn" onClick={() => { triggerHaptic(); setIsTimerRunning(!isTimerRunning) }}>{isTimerRunning ? '일시정지' : '시작'}</button>
-                <button className="secondary-btn" onClick={() => { triggerHaptic(); setIsTimerRunning(false); setTimeLeft(timerMode === 'study' ? studyMinutes * 60 : breakMinutes * 60) }}>초기화</button>
+                <button className="primary-btn" onClick={toggleTimer}>{isTimerRunning ? '일시정지' : '시작'}</button>
+                <button className="secondary-btn" onClick={resetTimer}>초기화</button>
               </div>
             </div>
           </section>

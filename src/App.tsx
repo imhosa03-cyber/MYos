@@ -1,6 +1,7 @@
 import { useEffect, useState, useRef } from 'react'
 import localforage from 'localforage'
 import PomodoroTimer from './components/PomodoroTimer'
+import LauncherPage from './components/LauncherPage' // 🔥 새로 분리한 퀵 런처 컴포넌트 불러오기
 import './App.css'
 
 const getTodayKST = () => {
@@ -109,7 +110,6 @@ function App() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>(() => { const saved = localStorage.getItem('myos-subscriptions'); return saved ? JSON.parse(saved) : [] })
   const [newSubName, setNewSubName] = useState(''); const [newSubAmount, setNewSubAmount] = useState(''); const [newSubDay, setNewSubDay] = useState('')
 
-  // 🔥 IndexedDB 기반 일기장 상태 관리 및 기존 localStorage 데이터 자동 마이그레이션
   const [diaries, setDiaries] = useState<Diary[]>([])
   const [isDiariesLoaded, setIsDiariesLoaded] = useState(false)
 
@@ -140,7 +140,6 @@ function App() {
   const [newDiaryDate, setNewDiaryDate] = useState(getTodayKST()); const [newDiaryContent, setNewDiaryContent] = useState(''); const [newDiaryPhoto, setNewDiaryPhoto] = useState<string | null>(null); const [editingDiaryId, setEditingDiaryId] = useState<number | null>(null)
 
   const [launchers, setLaunchers] = useState<Launcher[]>(() => { const saved = localStorage.getItem('myos-launchers'); return saved ? JSON.parse(saved) : [] })
-  const [newLauncherName, setNewLauncherName] = useState(''); const [newLauncherUrl, setNewLauncherUrl] = useState('')
 
   const [selectedGrass, setSelectedGrass] = useState<{date: string, count: number, level: number} | null>(null)
 
@@ -243,9 +242,6 @@ function App() {
 
   const addSubscription = () => { triggerHaptic(); const amount = Number(newSubAmount.replace(/[^0-9]/g, '')); const day = Number(newSubDay); if (!newSubName.trim() || !amount || amount <= 0 || !day || day < 1 || day > 31) return; const sub: Subscription = { id: Date.now(), name: newSubName.trim(), amount, billingDay: day }; setSubscriptions(curr => [...curr, sub]); setNewSubName(''); setNewSubAmount(''); setNewSubDay('') }
   const deleteSubscription = (id: number) => { triggerHaptic(); setSubscriptions(curr => curr.filter(s => s.id !== id)) }
-
-  const addLauncher = () => { triggerHaptic(); let url = newLauncherUrl.trim(); if (!newLauncherName.trim() || !url) return; if (!url.startsWith('http://') && !url.startsWith('https://')) url = 'https://' + url; const launcher: Launcher = { id: Date.now(), name: newLauncherName.trim(), url }; setLaunchers(curr => [...curr, launcher]); setNewLauncherName(''); setNewLauncherUrl('') }
-  const deleteLauncher = (id: number, e: React.MouseEvent) => { triggerHaptic(); e.stopPropagation(); setLaunchers(curr => curr.filter(l => l.id !== id)) }
 
   const shiftExpenseMonth = (direction: 'prev' | 'next') => { triggerHaptic(); const [year, month] = expenseMonth.split('-').map(Number); const date = new Date(year, month - 1 + (direction === 'next' ? 1 : -1), 1); const y = date.getFullYear(); const m = String(date.getMonth() + 1).padStart(2, '0'); setExpenseMonth(`${y}-${m}`) }
 
@@ -542,10 +538,17 @@ function App() {
           </>
         )}
 
-        {/* 타이머 컴포넌트 유지 */}
         <PomodoroTimer 
           isActive={page === 'timer'} 
           triggerHaptic={triggerHaptic} 
+        />
+
+        {/* 🔥 분리한 퀵 런처 컴포넌트 연결 */}
+        <LauncherPage 
+          isActive={page === 'launcher'}
+          launchers={launchers}
+          setLaunchers={setLaunchers}
+          triggerHaptic={triggerHaptic}
         />
 
         {page === 'settings' && (
@@ -588,26 +591,6 @@ function App() {
                   triggerHaptic(); localStorage.removeItem('myos-pin'); setSavedPin(''); setIsLocked(false); alert('비밀번호가 해제되었습니다.')
                 }}>비밀번호 잠금 해제 (삭제)</button>
               )}
-            </div>
-          </section>
-        )}
-
-        {page === 'launcher' && (
-          <section className="launcher-page">
-            <div className="page-title"><span>Myos</span><h1>퀵 런처</h1><p>자주 접속하는 링크를 등록하세요.</p></div>
-            <div className="launcher-input-area" style={{ display: 'flex', flexDirection: 'column', gap: '8px', marginBottom: '24px' }}>
-              <input type="text" placeholder="사이트 이름 (예: 학교 포털)" value={newLauncherName} onChange={e => setNewLauncherName(e.target.value)} />
-              <input type="text" placeholder="URL 주소 (예: github.com)" value={newLauncherUrl} onChange={e => setNewLauncherUrl(e.target.value)} />
-              <button className="primary-btn" onClick={addLauncher}>바로가기 추가</button>
-            </div>
-            <div className="launcher-grid">
-              {launchers.length === 0 && <div className="empty-state">등록된 바로가기가 없습니다.</div>}
-              {launchers.map(launcher => (
-                <div className="launcher-card" key={launcher.id} onClick={() => { triggerHaptic(); window.open(launcher.url, '_blank'); }}>
-                  <div className="launcher-content"><span className="launcher-name">{launcher.name}</span><span className="launcher-url">{launcher.url.replace(/^https?:\/\//, '')}</span></div>
-                  <button className="launcher-delete" onClick={(e) => deleteLauncher(launcher.id, e)}>✕</button>
-                </div>
-              ))}
             </div>
           </section>
         )}

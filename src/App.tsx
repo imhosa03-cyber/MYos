@@ -1,5 +1,6 @@
 import { useEffect, useState, useRef } from 'react'
-import PomodoroTimer from './components/PomodoroTimer' // 🔥 새로 분리한 타이머 컴포넌트 불러오기
+import localforage from 'localforage'
+import PomodoroTimer from './components/PomodoroTimer'
 import './App.css'
 
 const getTodayKST = () => {
@@ -108,7 +109,34 @@ function App() {
   const [subscriptions, setSubscriptions] = useState<Subscription[]>(() => { const saved = localStorage.getItem('myos-subscriptions'); return saved ? JSON.parse(saved) : [] })
   const [newSubName, setNewSubName] = useState(''); const [newSubAmount, setNewSubAmount] = useState(''); const [newSubDay, setNewSubDay] = useState('')
 
-  const [diaries, setDiaries] = useState<Diary[]>(() => { const saved = localStorage.getItem('myos-diaries'); return saved ? JSON.parse(saved) : [] })
+  // 🔥 IndexedDB 기반 일기장 상태 관리 및 기존 localStorage 데이터 자동 마이그레이션
+  const [diaries, setDiaries] = useState<Diary[]>([])
+  const [isDiariesLoaded, setIsDiariesLoaded] = useState(false)
+
+  useEffect(() => {
+    localforage.getItem<Diary[]>('myos-diaries').then((saved) => {
+      if (saved && saved.length > 0) {
+        setDiaries(saved)
+      } else {
+        const oldData = localStorage.getItem('myos-diaries')
+        if (oldData) {
+          try {
+            const parsed = JSON.parse(oldData)
+            setDiaries(parsed)
+            localforage.setItem('myos-diaries', parsed)
+          } catch {}
+        }
+      }
+      setIsDiariesLoaded(true)
+    })
+  }, [])
+
+  useEffect(() => {
+    if (isDiariesLoaded) {
+      localforage.setItem('myos-diaries', diaries)
+    }
+  }, [diaries, isDiariesLoaded])
+
   const [newDiaryDate, setNewDiaryDate] = useState(getTodayKST()); const [newDiaryContent, setNewDiaryContent] = useState(''); const [newDiaryPhoto, setNewDiaryPhoto] = useState<string | null>(null); const [editingDiaryId, setEditingDiaryId] = useState<number | null>(null)
 
   const [launchers, setLaunchers] = useState<Launcher[]>(() => { const saved = localStorage.getItem('myos-launchers'); return saved ? JSON.parse(saved) : [] })
@@ -124,7 +152,6 @@ function App() {
   useEffect(() => { localStorage.setItem('myos-schedules', JSON.stringify(schedules)) }, [schedules])
   useEffect(() => { localStorage.setItem('myos-memos', JSON.stringify(memos)) }, [memos])
   useEffect(() => { localStorage.setItem('myos-expenses', JSON.stringify(expenses)) }, [expenses])
-  useEffect(() => { localStorage.setItem('myos-diaries', JSON.stringify(diaries)) }, [diaries])
   useEffect(() => { localStorage.setItem('myos-subscriptions', JSON.stringify(subscriptions)) }, [subscriptions])
   useEffect(() => { localStorage.setItem('myos-launchers', JSON.stringify(launchers)) }, [launchers])
 
@@ -136,9 +163,18 @@ function App() {
     })
   }
 
-  const exportData = () => {
+  const exportData = async () => {
     triggerHaptic();
-    const data = { todos: localStorage.getItem('myos-todos'), schedules: localStorage.getItem('myos-schedules'), memos: localStorage.getItem('myos-memos'), expenses: localStorage.getItem('myos-expenses'), diaries: localStorage.getItem('myos-diaries'), subscriptions: localStorage.getItem('myos-subscriptions'), launchers: localStorage.getItem('myos-launchers') }
+    const diariesData = await localforage.getItem('myos-diaries');
+    const data = { 
+      todos: localStorage.getItem('myos-todos'), 
+      schedules: localStorage.getItem('myos-schedules'), 
+      memos: localStorage.getItem('myos-memos'), 
+      expenses: localStorage.getItem('myos-expenses'), 
+      diaries: JSON.stringify(diariesData), 
+      subscriptions: localStorage.getItem('myos-subscriptions'), 
+      launchers: localStorage.getItem('myos-launchers') 
+    }
     const blob = new Blob([JSON.stringify(data, null, 2)], { type: 'application/json' })
     const url = URL.createObjectURL(blob); const a = document.createElement('a'); a.href = url; a.download = `myos-backup-${getTodayKST()}.json`; a.click(); URL.revokeObjectURL(url)
   }
@@ -146,10 +182,16 @@ function App() {
   const importData = (event: React.ChangeEvent<HTMLInputElement>) => {
     const file = event.target.files?.[0]; if (!file) return
     const reader = new FileReader()
-    reader.onload = (e) => {
+    reader.onload = async (e) => {
       try {
         const parsed = JSON.parse(e.target?.result as string)
-        if (parsed.todos) localStorage.setItem('myos-todos', parsed.todos); if (parsed.schedules) localStorage.setItem('myos-schedules', parsed.schedules); if (parsed.memos) localStorage.setItem('myos-memos', parsed.memos); if (parsed.expenses) localStorage.setItem('myos-expenses', parsed.expenses); if (parsed.diaries) localStorage.setItem('myos-diaries', parsed.diaries); if (parsed.subscriptions) localStorage.setItem('myos-subscriptions', parsed.subscriptions); if (parsed.launchers) localStorage.setItem('myos-launchers', parsed.launchers)
+        if (parsed.todos) localStorage.setItem('myos-todos', parsed.todos); 
+        if (parsed.schedules) localStorage.setItem('myos-schedules', parsed.schedules); 
+        if (parsed.memos) localStorage.setItem('myos-memos', parsed.memos); 
+        if (parsed.expenses) localStorage.setItem('myos-expenses', parsed.expenses); 
+        if (parsed.diaries) await localforage.setItem('myos-diaries', JSON.parse(parsed.diaries)); 
+        if (parsed.subscriptions) localStorage.setItem('myos-subscriptions', parsed.subscriptions); 
+        if (parsed.launchers) localStorage.setItem('myos-launchers', parsed.launchers)
         alert('데이터 복원 완료. 시스템을 재시작합니다.'); window.location.reload()
       } catch { alert('올바르지 않은 백업 파일입니다.') }
     }
@@ -158,7 +200,6 @@ function App() {
 
   const handlePhotoUpload = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0]; if (!file) return
-    if (file.size > 2 * 1024 * 1024) { alert("2MB 이하의 이미지를 권장합니다."); return }
     const reader = new FileReader(); reader.onloadend = () => { setNewDiaryPhoto(reader.result as string) }; reader.readAsDataURL(file)
   }
   const removePhoto = () => { setNewDiaryPhoto(null); if (fileInputRef.current) fileInputRef.current.value = '' }
@@ -501,7 +542,7 @@ function App() {
           </>
         )}
 
-        {/* 🔥 분리한 타이머 컴포넌트를 여기에 배치! (다른 탭으로 이동해도 시간이 흐르도록 렌더링 유지) */}
+        {/* 타이머 컴포넌트 유지 */}
         <PomodoroTimer 
           isActive={page === 'timer'} 
           triggerHaptic={triggerHaptic} 

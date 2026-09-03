@@ -1,4 +1,5 @@
 import { useEffect, useState, useRef } from 'react'
+import PomodoroTimer from './components/PomodoroTimer' // 🔥 새로 분리한 타이머 컴포넌트 불러오기
 import './App.css'
 
 const getTodayKST = () => {
@@ -113,66 +114,7 @@ function App() {
   const [launchers, setLaunchers] = useState<Launcher[]>(() => { const saved = localStorage.getItem('myos-launchers'); return saved ? JSON.parse(saved) : [] })
   const [newLauncherName, setNewLauncherName] = useState(''); const [newLauncherUrl, setNewLauncherUrl] = useState('')
 
-  const [studyMinutes, setStudyMinutes] = useState(50)
-  const [breakMinutes, setBreakMinutes] = useState(10)
-  const [timeLeft, setTimeLeft] = useState(50 * 60)
-  const [isTimerRunning, setIsTimerRunning] = useState(false)
-  const [timerTargetTime, setTimerTargetTime] = useState<number | null>(null)
-  const [timerMode, setTimerMode] = useState<'study' | 'break'>('study')
-
   const [selectedGrass, setSelectedGrass] = useState<{date: string, count: number, level: number} | null>(null)
-
-  useEffect(() => {
-    let interval: ReturnType<typeof setInterval>
-    if (isTimerRunning && timerTargetTime) {
-      interval = setInterval(() => {
-        const now = Date.now()
-        const remaining = Math.max(0, Math.floor((timerTargetTime - now) / 1000))
-        setTimeLeft(remaining)
-
-        if (remaining === 0) {
-          setIsTimerRunning(false)
-          setTimerTargetTime(null)
-          triggerHaptic();
-          if (Notification.permission === 'granted') {
-            new Notification('Pomodoro Timer', { body: timerMode === 'study' ? '집중 시간이 종료되었습니다! 휴식하세요.' : '휴식 시간이 종료되었습니다! 다시 집중해볼까요?' })
-          }
-          
-          setTimeout(() => {
-            alert(timerMode === 'study' ? '집중 시간 종료! 휴식하세요 ☕' : '휴식 시간 종료! 다시 집중해봅시다 🔥')
-            const nextMode = timerMode === 'study' ? 'break' : 'study'
-            setTimerMode(nextMode)
-            setTimeLeft(nextMode === 'study' ? studyMinutes * 60 : breakMinutes * 60)
-          }, 100)
-        }
-      }, 1000)
-    }
-    return () => clearInterval(interval)
-  }, [isTimerRunning, timerTargetTime, timerMode, studyMinutes, breakMinutes])
-
-  const toggleTimer = () => {
-    triggerHaptic()
-    if (isTimerRunning) {
-      setIsTimerRunning(false)
-      setTimerTargetTime(null)
-    } else {
-      setIsTimerRunning(true)
-      setTimerTargetTime(Date.now() + timeLeft * 1000)
-    }
-  }
-
-  const resetTimer = () => {
-    triggerHaptic()
-    setIsTimerRunning(false)
-    setTimerTargetTime(null)
-    setTimeLeft(timerMode === 'study' ? studyMinutes * 60 : breakMinutes * 60)
-  }
-
-  const formatTime = (seconds: number) => {
-    const m = Math.floor(seconds / 60).toString().padStart(2, '0')
-    const s = (seconds % 60).toString().padStart(2, '0')
-    return `${m}:${s}`
-  }
 
   const fileInputRef = useRef<HTMLInputElement>(null)
   const [calYear, setCalYear] = useState(new Date().getFullYear())
@@ -429,7 +371,6 @@ function App() {
         </div>
       )}
 
-      {/* 🔥 사이드 메뉴 영역 수정: 내부 스크롤 적용으로 항목 잘림 방지 */}
       <aside className={`side-menu ${showMenu ? 'open' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
         <div className="menu-header" style={{ flexShrink: 0 }}><span>Myos</span><button onClick={() => setShowMenu(false)}>✕</button></div>
         <nav style={{ flex: 1, overflowY: 'auto', paddingBottom: '20px' }}>
@@ -560,45 +501,11 @@ function App() {
           </>
         )}
 
-        {page === 'timer' && (
-          <section className="timer-page">
-            <div className="page-title"><span>Myos</span><h1>Pomodoro Timer</h1><p>자유로운 집중 & 휴식 루틴 관리.</p></div>
-            <div className="timer-container">
-              <div className="timer-mode-selector">
-                <button className={timerMode === 'study' ? 'active' : ''} onClick={() => { triggerHaptic(); setTimerMode('study'); setTimeLeft(studyMinutes * 60); setIsTimerRunning(false); setTimerTargetTime(null); }}>집중 모드</button>
-                <button className={timerMode === 'break' ? 'active' : ''} onClick={() => { triggerHaptic(); setTimerMode('break'); setTimeLeft(breakMinutes * 60); setIsTimerRunning(false); setTimerTargetTime(null); }}>휴식 모드</button>
-              </div>
-              
-              <div className="timer-display">{formatTime(timeLeft)}</div>
-
-              {!isTimerRunning && (
-                <div style={{ display: 'flex', justifyContent: 'center', alignItems: 'center', gap: '8px', marginBottom: '32px' }}>
-                  <span style={{ color: 'var(--text-secondary)', fontSize: '0.95rem' }}>
-                    {timerMode === 'study' ? '집중' : '휴식'} 시간(분):
-                  </span>
-                  <input 
-                    type="number" 
-                    min="1" max="180"
-                    value={timerMode === 'study' ? studyMinutes : breakMinutes}
-                    onChange={(e) => {
-                      triggerHaptic();
-                      const val = parseInt(e.target.value) || 1;
-                      if (timerMode === 'study') { setStudyMinutes(val); setTimeLeft(val * 60); }
-                      else { setBreakMinutes(val); setTimeLeft(val * 60); }
-                    }}
-                    style={{ width: '80px', textAlign: 'center', padding: '8px', minHeight: '40px', fontSize: '1rem' }}
-                  />
-                </div>
-              )}
-              {isTimerRunning && <div style={{ height: '74px' }}></div>}
-
-              <div className="timer-controls">
-                <button className="primary-btn" onClick={toggleTimer}>{isTimerRunning ? '일시정지' : '시작'}</button>
-                <button className="secondary-btn" onClick={resetTimer}>초기화</button>
-              </div>
-            </div>
-          </section>
-        )}
+        {/* 🔥 분리한 타이머 컴포넌트를 여기에 배치! (다른 탭으로 이동해도 시간이 흐르도록 렌더링 유지) */}
+        <PomodoroTimer 
+          isActive={page === 'timer'} 
+          triggerHaptic={triggerHaptic} 
+        />
 
         {page === 'settings' && (
           <section className="settings-page">

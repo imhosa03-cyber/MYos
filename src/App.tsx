@@ -1,7 +1,8 @@
 import { useEffect, useState, useRef } from 'react'
 import localforage from 'localforage'
 import PomodoroTimer from './components/PomodoroTimer'
-import LauncherPage from './components/LauncherPage' // 🔥 새로 분리한 퀵 런처 컴포넌트 불러오기
+import LauncherPage from './components/LauncherPage'
+import AiAssistant from './components/AiAssistant'
 import './App.css'
 
 const getTodayKST = () => {
@@ -87,7 +88,7 @@ function App() {
   useEffect(() => { localStorage.setItem('myos-w-schedule', JSON.stringify(showScheduleWidget)) }, [showScheduleWidget])
 
   const [page, setPage] = useState<
-    'home' | 'today' | 'launcher' | 'timer' | 'calendar' | 'todos' | 'schedule' | 'memo' | 'expense' | 'diary' | 'backup' | 'settings'
+    'home' | 'today' | 'launcher' | 'timer' | 'calendar' | 'todos' | 'schedule' | 'memo' | 'expense' | 'diary' | 'backup' | 'settings' | 'ai'
   >('home')
 
   const [todos, setTodos] = useState<Todo[]>(() => {
@@ -245,11 +246,18 @@ function App() {
 
   const shiftExpenseMonth = (direction: 'prev' | 'next') => { triggerHaptic(); const [year, month] = expenseMonth.split('-').map(Number); const date = new Date(year, month - 1 + (direction === 'next' ? 1 : -1), 1); const y = date.getFullYear(); const m = String(date.getMonth() + 1).padStart(2, '0'); setExpenseMonth(`${y}-${m}`) }
 
+  // 월별 지출 및 총 누적 잔액 (Total Balance) 계산
   const currentMonthExpenses = expenses.filter(e => e.date && e.date.startsWith(expenseMonth))
   const totalIncome = currentMonthExpenses.filter((e) => e.type === 'income').reduce((sum, e) => sum + e.amount, 0)
   const totalExpense = currentMonthExpenses.filter((e) => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0)
   const totalSubAmount = subscriptions.reduce((sum, s) => sum + s.amount, 0)
   const balance = totalIncome - totalExpense - totalSubAmount
+
+  // 전체 누적 잔액 (모든 수입 - 모든 지출 - 모든 고정 구독료 총합 등)
+  const totalAllIncome = expenses.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0)
+  const totalAllExpense = expenses.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0)
+  const totalAllSubs = subscriptions.reduce((sum, s) => sum + s.amount, 0)
+  const totalCumulativeBalance = totalAllIncome - totalAllExpense - totalAllSubs
 
   const getNearestSchedule = () => {
     const todayStr = getTodayKST()
@@ -289,7 +297,7 @@ function App() {
     const todayStr = getTodayKST()
     const todayTodos = todos.filter(t => t.date === todayStr && !t.completed).length
     const nextSch = getNearestSchedule()
-    const balanceStr = balance >= 0 ? `잔여 예산 ${balance.toLocaleString()}원` : `예산 초과 ${Math.abs(balance).toLocaleString()}원`
+    const balanceStr = totalCumulativeBalance >= 0 ? `누적 잔액 ${totalCumulativeBalance.toLocaleString()}원` : `예산 초과 ${Math.abs(totalCumulativeBalance).toLocaleString()}원`
     let briefingText = `오늘 남은 할 일은 ${todayTodos}개입니다.\n현재 ${balanceStr}입니다.`
     if (nextSch) briefingText += `\n다가오는 일정: ${nextSch.title} (${nextSch.dDayStr})`
 
@@ -408,13 +416,15 @@ function App() {
         </div>
       )}
 
-      <aside className={`side-menu ${showMenu ? 'open' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto' }}>
+      {/* 🔥 가로 스크롤/떨림 방지 위해 overflowX: 'hidden' 추가 */}
+      <aside className={`side-menu ${showMenu ? 'open' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
         <div className="menu-header" style={{ flexShrink: 0 }}><span>Myos</span><button onClick={() => setShowMenu(false)}>✕</button></div>
-        <nav style={{ flex: 1, overflowY: 'auto', paddingBottom: '20px' }}>
+        <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingBottom: '20px' }}>
           <button onClick={() => navigateTo('home')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="m3 9 9-7 9 7v11a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2z"/><polyline points="9 22 9 12 15 12 15 22"/></svg> <span>홈</span></button>
           <button onClick={() => navigateTo('today')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="5"/><line x1="12" y1="1" x2="12" y2="3"/><line x1="12" y1="21" x2="12" y2="23"/><line x1="4.22" y1="4.22" x2="5.64" y2="5.64"/><line x1="18.36" y1="18.36" x2="19.78" y2="19.78"/><line x1="1" y1="12" x2="3" y2="12"/><line x1="21" y1="12" x2="23" y2="12"/><line x1="4.22" y1="19.78" x2="5.64" y2="18.36"/><line x1="18.36" y1="5.64" x2="19.78" y2="4.22"/></svg> <span>오늘</span></button>
           <button onClick={() => navigateTo('launcher')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polygon points="13 2 3 14 12 14 11 22 21 10 12 10 13 2"/></svg> <span>퀵 런처</span></button>
           <button onClick={() => navigateTo('timer')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><circle cx="12" cy="12" r="10"/><polyline points="12 6 12 12 16 14"/></svg> <span>Pomodoro Timer</span></button>
+          <button onClick={() => navigateTo('ai')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M12 2a10 10 0 0 1 7.54 16.6l-2.14 2.14a2 2 0 0 1-2.83 0L13 19.34A10 10 0 1 1 12 2z"/></svg> <span>AI 비서 마이 (Mai)</span></button>
           <button onClick={() => navigateTo('calendar')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><rect x="3" y="4" width="18" height="18" rx="2" ry="2"/><line x1="16" y1="2" x2="16" y2="6"/><line x1="8" y1="2" x2="8" y2="6"/><line x1="3" y1="10" x2="21" y2="10"/></svg> <span>캘린더</span></button>
           <button onClick={() => navigateTo('todos')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><polyline points="9 11 12 14 22 4"/><path d="M21 12v7a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2V5a2 2 0 0 1 2-2h11"/></svg> <span>할 일</span></button>
           <button onClick={() => navigateTo('schedule')}><svg width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2" strokeLinecap="round" strokeLinejoin="round"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg> <span>일정</span></button>
@@ -458,7 +468,7 @@ function App() {
                 <div className="briefing-header"><span className="briefing-title">오늘의 브리핑</span><button className="briefing-btn">알림 받기</button></div>
                 <div className="briefing-content">
                   <div>남은 할 일: <strong>{todos.filter(t => t.date === getTodayKST() && !t.completed).length}개</strong></div>
-                  <div>이달 잔액: <strong>{balance.toLocaleString()}원</strong></div>
+                  <div>총 누적 잔액: <strong>{totalCumulativeBalance.toLocaleString()}원</strong></div>
                 </div>
               </div>
             )}
@@ -543,12 +553,24 @@ function App() {
           triggerHaptic={triggerHaptic} 
         />
 
-        {/* 🔥 분리한 퀵 런처 컴포넌트 연결 */}
         <LauncherPage 
           isActive={page === 'launcher'}
           launchers={launchers}
           setLaunchers={setLaunchers}
           triggerHaptic={triggerHaptic}
+        />
+
+        {/* 🔥 AI 비서 '마이(Mai)' 컴포넌트 연결 (총 누적 잔액 포함) */}
+        <AiAssistant 
+          isActive={page === 'ai'} 
+          triggerHaptic={triggerHaptic} 
+          appContext={{
+            todos: todos,
+            schedules: schedules,
+            balance: balance,
+            totalBalance: totalCumulativeBalance,
+            todayStr: getTodayKST()
+          }}
         />
 
         {page === 'settings' && (
@@ -599,9 +621,9 @@ function App() {
           <section className="calendar-page">
             <div className="page-title"><span>Myos</span><h1>캘린더</h1></div>
             <div className="calendar-summary-panel">
-              <div className="cal-sum-item"><small>수입</small><div style={{ color: '#34c759' }}>+{expenses.filter(e => e.date.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`) && e.type === 'income').reduce((s, e) => s + e.amount, 0).toLocaleString()}</div></div>
-              <div className="cal-sum-item"><small>지출</small><div style={{ color: '#ff3b30' }}>-{expenses.filter(e => e.date.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`) && e.type === 'expense').reduce((s, e) => s + e.amount, 0).toLocaleString()}</div></div>
-              <div className="cal-sum-item"><small>고정 지출</small><div style={{ color: 'var(--text-secondary)' }}>-{totalSubAmount.toLocaleString()}</div></div>
+              <div className="cal-sum-item"><small>총 누적 잔액</small><div style={{ color: totalCumulativeBalance >= 0 ? '#34c759' : '#ff3b30' }}>{totalCumulativeBalance.toLocaleString()}원</div></div>
+              <div className="cal-sum-item"><small>{calMonth + 1}월 수입</small><div style={{ color: '#34c759' }}>+{expenses.filter(e => e.date.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`) && e.type === 'income').reduce((s, e) => s + e.amount, 0).toLocaleString()}</div></div>
+              <div className="cal-sum-item"><small>{calMonth + 1}월 지출</small><div style={{ color: '#ff3b30' }}>-{expenses.filter(e => e.date.startsWith(`${calYear}-${String(calMonth+1).padStart(2,'0')}`) && e.type === 'expense').reduce((s, e) => s + e.amount, 0).toLocaleString()}</div></div>
             </div>
             <div className="calendar-header">
               <button onClick={prevMonth}>◀</button><h2>{calYear}년 {calMonth + 1}월</h2><button onClick={nextMonth}>▶</button>
@@ -718,16 +740,16 @@ function App() {
             
             <div className="glass-panel" style={{ padding: '24px', marginBottom: '24px' }}>
               <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', marginBottom: '16px' }}>
-                <span style={{ fontSize: '1.05rem', fontWeight: '800' }}>📊 이달의 재정 분석 리포트</span>
-                <span style={{ fontSize: '0.85rem', color: balance >= 0 ? '#34c759' : '#ff3b30', fontWeight: '700' }}>
-                  {balance >= 0 ? '흑자 운영 중 🥳' : '적자 주의 ⚠️'}
+                <span style={{ fontSize: '1.05rem', fontWeight: '800' }}>📊 재정 현황 및 리포트</span>
+                <span style={{ fontSize: '0.85rem', color: totalCumulativeBalance >= 0 ? '#34c759' : '#ff3b30', fontWeight: '700' }}>
+                  총 누적 잔액: {totalCumulativeBalance.toLocaleString()}원
                 </span>
               </div>
 
               <div style={{ marginBottom: '16px' }}>
                 <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.85rem', fontWeight: '600' }}>
-                  <span style={{ color: '#34c759' }}>수입 (+{totalIncome.toLocaleString()}원)</span>
-                  <span style={{ color: '#ff3b30' }}>총 지출 (-{(totalExpense + totalSubAmount).toLocaleString()}원)</span>
+                  <span style={{ color: '#34c759' }}>{expenseMonth} 수입 (+{totalIncome.toLocaleString()}원)</span>
+                  <span style={{ color: '#ff3b30' }}>{expenseMonth} 지출 (-{(totalExpense + totalSubAmount).toLocaleString()}원)</span>
                 </div>
                 <div style={{ width: '100%', height: '14px', background: 'rgba(150,150,150,0.2)', borderRadius: '7px', overflow: 'hidden', display: 'flex' }}>
                   {(() => {
@@ -744,28 +766,6 @@ function App() {
                   })()}
                 </div>
               </div>
-
-              {(totalExpense > 0 || totalSubAmount > 0) && (
-                <div style={{ borderTop: '1px solid rgba(150,150,150,0.2)', paddingTop: '16px' }}>
-                  <div style={{ display: 'flex', justifyContent: 'space-between', marginBottom: '6px', fontSize: '0.85rem', fontWeight: '600', color: 'var(--text-secondary)' }}>
-                    <span>변동 지출 ({totalExpense.toLocaleString()}원)</span>
-                    <span>고정 구독 ({totalSubAmount.toLocaleString()}원)</span>
-                  </div>
-                  <div style={{ width: '100%', height: '8px', background: 'rgba(150,150,150,0.2)', borderRadius: '4px', overflow: 'hidden', display: 'flex' }}>
-                    {(() => {
-                      const totalOut = totalExpense + totalSubAmount;
-                      if (totalOut === 0) return null;
-                      const varPercent = (totalExpense / totalOut) * 100;
-                      return (
-                        <>
-                          <div style={{ width: `${varPercent}%`, background: 'var(--primary-color)', transition: 'width 0.4s' }} />
-                          <div style={{ width: `${100 - varPercent}%`, background: '#8e8e93', transition: 'width 0.4s' }} />
-                        </>
-                      );
-                    })()}
-                  </div>
-                </div>
-              )}
             </div>
 
             <div className="expense-dashboard">
@@ -798,11 +798,13 @@ function App() {
               </div>
               <div className="expense-sidebar">
                 <div className="expense-summary-panel glass-panel">
-                  <div className="summary-box"><small>{expenseMonth} 총 수입</small><div className="income-text">+{totalIncome.toLocaleString()}원</div></div>
-                  <div className="summary-box"><small>{expenseMonth} 총 지출</small><div className="expense-text">-{totalExpense.toLocaleString()}원</div></div>
+                  <div className="summary-box"><small>총 누적 잔액 (All-Time)</small><div className={totalCumulativeBalance >= 0 ? 'income-text' : 'expense-text'} style={{ fontSize: '1.2rem', fontWeight: '800' }}>{totalCumulativeBalance.toLocaleString()}원</div></div>
+                  <hr style={{ margin: '12px 0', border: '0', borderTop: '1px solid rgba(150,150,150,0.2)' }} />
+                  <div className="summary-box"><small>{expenseMonth} 수입</small><div className="income-text">+{totalIncome.toLocaleString()}원</div></div>
+                  <div className="summary-box"><small>{expenseMonth} 지출</small><div className="expense-text">-{totalExpense.toLocaleString()}원</div></div>
                   <div className="summary-box"><small>매달 고정 지출</small><div className="expense-text" style={{ color: 'var(--text-secondary)' }}>-{totalSubAmount.toLocaleString()}원</div></div>
                   <hr />
-                  <div className="summary-box total"><small>{expenseMonth} 남은 잔액</small><div className={balance >= 0 ? 'income-text' : 'expense-text'}>{balance.toLocaleString()}원</div></div>
+                  <div className="summary-box total"><small>{expenseMonth} 이달의 순수익</small><div className={balance >= 0 ? 'income-text' : 'expense-text'}>{balance.toLocaleString()}원</div></div>
                 </div>
                 <div className="expense-summary-panel glass-panel" style={{ marginTop: '20px' }}>
                   <h3 style={{ margin: '0 0 16px 0', fontSize: '1.1rem', fontWeight: '700' }}>고정 지출 등록</h3>

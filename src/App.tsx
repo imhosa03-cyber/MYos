@@ -246,14 +246,12 @@ function App() {
 
   const shiftExpenseMonth = (direction: 'prev' | 'next') => { triggerHaptic(); const [year, month] = expenseMonth.split('-').map(Number); const date = new Date(year, month - 1 + (direction === 'next' ? 1 : -1), 1); const y = date.getFullYear(); const m = String(date.getMonth() + 1).padStart(2, '0'); setExpenseMonth(`${y}-${m}`) }
 
-  // 월별 지출 및 총 누적 잔액 (Total Balance) 계산
   const currentMonthExpenses = expenses.filter(e => e.date && e.date.startsWith(expenseMonth))
   const totalIncome = currentMonthExpenses.filter((e) => e.type === 'income').reduce((sum, e) => sum + e.amount, 0)
   const totalExpense = currentMonthExpenses.filter((e) => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0)
   const totalSubAmount = subscriptions.reduce((sum, s) => sum + s.amount, 0)
   const balance = totalIncome - totalExpense - totalSubAmount
 
-  // 전체 누적 잔액 (모든 수입 - 모든 지출 - 모든 고정 구독료 총합 등)
   const totalAllIncome = expenses.filter(e => e.type === 'income').reduce((sum, e) => sum + e.amount, 0)
   const totalAllExpense = expenses.filter(e => e.type === 'expense').reduce((sum, e) => sum + e.amount, 0)
   const totalAllSubs = subscriptions.reduce((sum, s) => sum + s.amount, 0)
@@ -393,6 +391,7 @@ function App() {
         </div>
       )}
 
+      {/* 🔥 도움말 모달(마이 내용 추가) */}
       {showHelp && (
         <div className="modal-overlay" onClick={() => { triggerHaptic(); setShowHelp(false); }}>
           <div className="modal-content glass-panel" onClick={e => e.stopPropagation()}>
@@ -402,6 +401,10 @@ function App() {
               MYos 도움말
             </h2>
             <div style={{display:'flex', flexDirection:'column', gap:'20px', color:'var(--text-primary)'}}>
+              <div>
+                <strong style={{display:'block', marginBottom:'4px'}}>🤖 AI 비서 마이 (Mai)</strong>
+                <span style={{fontSize:'0.9rem', color:'var(--text-secondary)', lineHeight:'1.5', display:'block'}}>내 앱 데이터를 읽고 답해주는 똑똑한 비서입니다. 음성(🎙️)으로 편하게 묻거나 "내일 오후 3시 할 일 추가해 줘"처럼 명령하면 직접 등록까지 해냅니다!</span>
+              </div>
               <div>
                 <strong style={{display:'block', marginBottom:'4px'}}>☑️ 할 일 vs 오늘 vs 일정</strong>
                 <span style={{fontSize:'0.9rem', color:'var(--text-secondary)', lineHeight:'1.5', display:'block'}}>머릿속 복잡한 일들은 <strong>'할 일'</strong>에, 오늘 당장 끝낼 일은 <strong>'오늘'</strong>에, 시간 약속은 <strong>'일정'</strong>에 맡겨주세요!</span>
@@ -416,7 +419,6 @@ function App() {
         </div>
       )}
 
-      {/* 🔥 가로 스크롤/떨림 방지 위해 overflowX: 'hidden' 추가 */}
       <aside className={`side-menu ${showMenu ? 'open' : ''}`} style={{ display: 'flex', flexDirection: 'column', height: '100%', overflowY: 'auto', overflowX: 'hidden' }}>
         <div className="menu-header" style={{ flexShrink: 0 }}><span>Myos</span><button onClick={() => setShowMenu(false)}>✕</button></div>
         <nav style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', paddingBottom: '20px' }}>
@@ -560,7 +562,6 @@ function App() {
           triggerHaptic={triggerHaptic}
         />
 
-        {/* 🔥 AI 비서 '마이(Mai)' 컴포넌트 연결 (총 누적 잔액 + 할일 등록 권한 포함) */}
         <AiAssistant 
           isActive={page === 'ai'} 
           triggerHaptic={triggerHaptic} 
@@ -579,7 +580,7 @@ function App() {
               time: todoData.time || '',
               priority: 'normal',
               completed: false,
-              tag: '마이(AI)' // 마이가 등록했다는 표시
+              tag: '마이(AI)'
             };
             setTodos(curr => [...curr, newTodo]);
           }}

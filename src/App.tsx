@@ -560,7 +560,7 @@ function App() {
           triggerHaptic={triggerHaptic}
         />
 
-        {/* 🔥 AI 비서 '마이(Mai)' 컴포넌트 연결 (총 누적 잔액 포함) */}
+        {/* 🔥 AI 비서 '마이(Mai)' 컴포넌트 연결 (총 누적 잔액 + 할일 등록 권한 포함) */}
         <AiAssistant 
           isActive={page === 'ai'} 
           triggerHaptic={triggerHaptic} 
@@ -570,6 +570,18 @@ function App() {
             balance: balance,
             totalBalance: totalCumulativeBalance,
             todayStr: getTodayKST()
+          }}
+          onAddTodo={(todoData) => {
+            const newTodo: Todo = {
+              id: Date.now(),
+              text: todoData.text,
+              date: todoData.date || getTodayKST(),
+              time: todoData.time || '',
+              priority: 'normal',
+              completed: false,
+              tag: '마이(AI)' // 마이가 등록했다는 표시
+            };
+            setTodos(curr => [...curr, newTodo]);
           }}
         />
 

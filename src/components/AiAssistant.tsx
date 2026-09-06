@@ -92,7 +92,8 @@ export default function AiAssistant({ isActive, triggerHaptic, appContext, onAdd
       const ai = new GoogleGenAI({ apiKey: apiKey });
       
       const response = await ai.models.generateContent({
-        model: 'gemini-3.6-pro', // 🔥 가장 똑똑하고 무거운 'Pro' 두뇌로 교체!
+        // 🔥 이 부분을 pro에서 다시 flash로 변경
+        model: 'gemini-3.6-flash', 
         contents: `${contextString}\n\n사용자 요청: ${text}`,
         config: {
           tools: [{

@@ -562,6 +562,7 @@ function App() {
           triggerHaptic={triggerHaptic}
         />
 
+        {/* 🔥 AI 비서 마이 PRO 버전 (일기장 열람 및 모든 권한 위임) */}
         <AiAssistant 
           isActive={page === 'ai'} 
           triggerHaptic={triggerHaptic} 
@@ -570,7 +571,8 @@ function App() {
             schedules: schedules,
             balance: balance,
             totalBalance: totalCumulativeBalance,
-            todayStr: getTodayKST()
+            todayStr: getTodayKST(),
+            diaries: diaries // 마이에게 일기장을 보여줌 (감정 분석용)
           }}
           onAddTodo={(todoData) => {
             const newTodo: Todo = {
@@ -583,6 +585,25 @@ function App() {
               tag: '마이(AI)'
             };
             setTodos(curr => [...curr, newTodo]);
+          }}
+          onAddExpense={(expenseData) => {
+            const newExpense: Expense = {
+              id: Date.now(),
+              amount: expenseData.amount,
+              description: expenseData.description,
+              type: expenseData.type,
+              date: expenseData.date || getTodayKST()
+            };
+            setExpenses(curr => [newExpense, ...curr]);
+          }}
+          onAddSchedule={(scheduleData) => {
+            const newSchedule: Schedule = {
+              id: Date.now(),
+              title: scheduleData.title,
+              date: scheduleData.date || getTodayKST(),
+              time: scheduleData.time || '00:00'
+            };
+            setSchedules(curr => [...curr, newSchedule]);
           }}
         />
 
